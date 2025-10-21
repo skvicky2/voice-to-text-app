@@ -25,7 +25,8 @@ function AppNavigator() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        {/* <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" /> */}
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        {/* <SafeScreen style={{ flex: 1, backgroundColor: "white" }}> */}
         <Stack.Navigator
           initialRouteName="Welcome"
           screenOptions={{ headerShown: false }}
@@ -35,6 +36,7 @@ function AppNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Home" component={TranscribeScreen} />
         </Stack.Navigator>
+        {/* </SafeScreen> */}
       </NavigationContainer>
     </SafeAreaProvider>
   );
