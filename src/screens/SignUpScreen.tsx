@@ -67,7 +67,7 @@ export default function SignUpScreen() {
             <View style={styles.headerContainer}>
               <View style={styles.headerRow}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                  <MaterialIcons name="arrow-back-ios" size={22} color="#222" />
+                  <MaterialIcons name="arrow-back-ios" size={22} color="#444444ff" />
                 </TouchableOpacity>
               </View>
               <WelcomeScreenSvg width={250} height={250} />
@@ -165,7 +165,6 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    marginTop: 55,
   },
   flex: {
     flex: 1,
@@ -177,11 +176,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    // marginBottom: 20,
   },
   headerRow: {
     position: "absolute",
-    top: 50,
+    top: 20,
     left: 20,
   },
   card: {
