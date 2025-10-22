@@ -301,9 +301,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     alignItems: "center",
     backgroundColor: colors.bgEnd,
-    marginTop: 55,
-    // paddingHorizontal: 40,
-    // paddingVertical: 40,
   },
   card: {
     width: width - 40,
@@ -355,7 +352,6 @@ const styles = StyleSheet.create({
     marginTop: 28,
     width: "100%",
     height: "70%",
-    // maxHeight: 560,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     boxShadow: "0 6px 6px rgba(0,0,0,0.1)",
     borderRadius: 10,

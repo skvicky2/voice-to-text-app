@@ -67,7 +67,6 @@ export default WelcomeScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 55,
     justifyContent: "center",
     backgroundColor: colors.bgEnd,
   },
