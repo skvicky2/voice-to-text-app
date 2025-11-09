@@ -1,4 +1,4 @@
-import React, { use } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,29 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Octicons } from "@expo/vector-icons";
-import { colors } from "../theme";
+import { colors } from "../../theme";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
 import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import * as FileSystem from "expo-file-system";
 
 const { width } = Dimensions.get("window");
 
+const API_BASE_URL = "http://35.208.32.13:8000//ingest/encrypted";
+
+const AES_KEY_BYTES = new Uint8Array([
+  0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89,
+  0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23,
+  0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+]);
+
 export default function TranscribeScreen() {
-  const [showSignOutText, setShowSignOutText] = React.useState(false);
   const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
   const [recording, setRecording] = React.useState<Audio.Recording | null>(
     null
   );
-  const [isRecording, setIsRecording] = React.useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordTime, setRecordTime] = React.useState<number>(0);
   const [recordUri, setRecordUri] = React.useState<string | null>(null);
   const [transcribedText, setTranscribedText] = React.useState<string | null>(
@@ -32,71 +41,84 @@ export default function TranscribeScreen() {
   );
   const [sound, setSound] = React.useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = React.useState<boolean>(false);
+  const [audioBlob, setAudioBlob] = React.useState<Blob | null>(null);
+  const [fileBlob, setFileBlob] = React.useState<Blob | null>(null);
+  const [mode, setMode] = useState<"speech" | "file">("speech");
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState("");
+  const [hasResponse, setHasResponse] = useState(false);
   const navigation = useNavigation<any>();
 
-  const onRecordPress = async () => {
-    try {
-      if (isRecording && recording) {
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        setRecordUri(uri || null);
-        setSelectedFile(uri || "Recorded audio");
-        setIsRecording(false);
-        setRecording(null);
-        return;
-      }
+  // const onRecordPress = async () => {
+  //   try {
+  //     if (isRecording && recording) {
+  //       await recording.stopAndUnloadAsync();
+  //       const uri = recording.getURI();
+  //       setRecordUri(uri || null);
+  //       setSelectedFile(uri || "Recorded audio");
+  //       setIsRecording(false);
+  //       setRecording(null);
+  //       return;
+  //     }
 
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission required",
-          "Microphone permission is required to record audio."
-        );
-        return;
-      }
+  //     const { status } = await Audio.requestPermissionsAsync();
+  //     if (status !== "granted") {
+  //       Alert.alert(
+  //         "Permission required",
+  //         "Microphone permission is required to record audio."
+  //       );
+  //       return;
+  //     }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(
-        (Audio as any).RecordingOptionsPresets?.HIGH_QUALITY ?? {}
-      );
-      await rec.startAsync();
-      setRecording(rec);
-      setIsRecording(true);
-      setRecordTime(0);
+  //     await Audio.setAudioModeAsync({
+  //       allowsRecordingIOS: true,
+  //       playsInSilentModeIOS: true,
+  //     });
+  //     const rec = new Audio.Recording();
+  //     await rec.prepareToRecordAsync(
+  //       (Audio as any).RecordingOptionsPresets?.HIGH_QUALITY ?? {}
+  //     );
+  //     await rec.startAsync();
+  //     setRecording(rec);
+  //     setIsRecording(true);
+  //     setRecordTime(0);
 
-      const start = Date.now();
-      const timer = setInterval(
-        () => setRecordTime(Math.floor((Date.now() - start) / 1000)),
-        500
-      );
-      rec.setOnRecordingStatusUpdate((status: any) => {
-        if (!status.isRecording) clearInterval(timer);
-      });
-    } catch (err) {
-      console.warn("record error", err);
-      Alert.alert("Recording error", String(err));
-    }
-  };
+  //     const start = Date.now();
+  //     const timer = setInterval(
+  //       () => setRecordTime(Math.floor((Date.now() - start) / 1000)),
+  //       500
+  //     );
+  //     rec.setOnRecordingStatusUpdate((status: any) => {
+  //       if (!status.isRecording) clearInterval(timer);
+  //     });
+  //   } catch (err) {
+  //     console.warn("record error", err);
+  //     Alert.alert("Recording error", String(err));
+  //   }
+  // };
 
   const onUploadPress = async () => {
     try {
       const res: any = await DocumentPicker.getDocumentAsync({
         type: "audio/*",
       });
-      if (res.type === "success") {
-        setSelectedFile(res.name || res.uri);
-        setRecordUri(res.uri || null);
-      }
+      console.log("DocumentPicker result:", res);
+      setSelectedFile(res.assets[0].name || res.assets[0].uri);
+      setRecordUri(res.assets[0].uri || null);
+      console.log("File selected:", res);
+      // Convert selected file to blob
+      const uri = res.uri;
+      const blob = await getBlobFromUri(uri);
+      setFileBlob(blob);
+      console.log("Blob created from file:", blob);
+      setMode("file");
+      // }
     } catch (err) {
       console.warn("picker error", err);
     }
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!selectedFile && !recordUri) {
       Alert.alert(
         "No audio",
@@ -104,12 +126,171 @@ export default function TranscribeScreen() {
       );
       return;
     }
+    const blobToUpload = audioBlob;
+    if (!blobToUpload) {
+      setStatus("No audio selected.");
+      return;
+    }
+
+    setStatus("Encrypting...");
+    setHasResponse(false);
+    setTranscribedText(null);
+
+    try {
+      const encryptedBuffer = await encryptAudio(blobToUpload);
+      setStatus("Uploading...");
+      setProgress(0);
+
+      const formData = new FormData();
+      formData.append(
+        "encrypted_file",
+        new Blob([encryptedBuffer]),
+        mode === "speech" ? "recorded_audio.webm" : (fileBlob as File).name
+      );
+      formData.append(
+        "source_type",
+        mode === "speech" ? "web_recorder" : "file_upload"
+      );
+      formData.append(
+        "original_filename",
+        mode === "speech" ? "recorded_audio.webm" : (fileBlob as File).name
+      );
+      formData.append("mode", mode);
+      formData.append("device_name", "web-browser");
+
+      const res = await axios.post(API_BASE_URL, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (e) =>
+          setProgress(Math.round((e.loaded * 100) / (e.total || 1))),
+        timeout: 0,
+      });
+
+      // setHasResponse(true);
+
+      // Robust parsing for transcription
+      let text = "";
+      if (res.data?.transcription) {
+        if (typeof res.data.transcription === "string")
+          text = res.data.transcription;
+        else if (typeof res.data.transcription.text === "string")
+          text = res.data.transcription.text;
+        else if (Array.isArray(res.data.transcription.segments)) {
+          text = res.data.transcription.segments
+            .map((s: any) => s.text || "")
+            .join("\n");
+        }
+      }
+      console.log("Transcription received:", text);
+
+      setTranscribedText(text?.trim() || "No transcription available.");
+      // setStatus(text ? "✅ Upload successful" : "Upload processed — no transcription found.");
+    } catch (err) {
+      console.error(err);
+      // setHasResponse(true);
+      setTranscribedText("No transcription available.");
+      // setStatus("❌ Upload failed or server error");
+    } finally {
+      // setProgress(0);
+    }
 
     const name = selectedFile ?? recordUri ?? "audio";
     const simulated = `Transcribed text for ${name}: \nThis is a placeholder transcript generated locally.`;
     setTranscribedText(simulated);
     Alert.alert("Submitted", "Audio ready for transcription (placeholder)");
   };
+
+  // Request permissions on mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== "granted") {
+        alert("Permission to access microphone is required!");
+      }
+    })();
+
+    return () => {
+      // Cleanup sound on unmount
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
+
+  // Helper: Convert file URI → Blob
+  const getBlobFromUri = async (uri: any): Promise<Blob> => {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: "base64", // ✅ works safely in all Expo versions
+    });
+
+    const blob = new Blob(
+      [Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))],
+      { type: "audio/m4a" }
+    );
+
+    return blob;
+  };
+  const onRecordPress = async () => {
+    try {
+      if (!isRecording) {
+        // Start Recording
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        const { recording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        console.log("");
+        setRecording(recording);
+        setIsRecording(true);
+        console.log("Recording started...");
+      } else {
+        if (recording === null) return;
+        // Stop Recording
+        setIsRecording(false);
+        console.log("Stopping recording...");
+        await recording.stopAndUnloadAsync();
+
+        const uri = recording.getURI();
+        console.log("Recording saved at:", uri);
+        setRecordUri(uri);
+        setRecording(null);
+        // Convert recorded file to blob
+        const blob = await getBlobFromUri(uri);
+        setAudioBlob(blob);
+        console.log("Blob created:", blob);
+
+        // Play the recorded audio
+        const { sound } = await Audio.Sound.createAsync({ uri });
+        setSound(sound);
+        await sound.playAsync();
+        console.log("Playback started...");
+      }
+    } catch (err) {
+      console.error("Recording error:", err);
+    }
+  };
+  async function encryptAudio(blob: Blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    const key = await crypto.subtle.importKey(
+      "raw",
+      AES_KEY_BYTES,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt"]
+    );
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: nonce },
+      key,
+      arrayBuffer
+    );
+    const finalBuffer = new Uint8Array(nonce.length + encrypted.byteLength);
+    finalBuffer.set(nonce, 0);
+    finalBuffer.set(new Uint8Array(encrypted), nonce.length);
+    return finalBuffer;
+  }
 
   const playAudio = async () => {
     try {
@@ -173,7 +354,7 @@ export default function TranscribeScreen() {
           }}
         >
           <Text style={styles.title}>AudioIntel</Text>
-          <Pressable
+          {/* <Pressable
             onPress={() => navigation.navigate("Welcome")}
             onHoverIn={() => setShowSignOutText(true)}
             onHoverOut={() => setShowSignOutText(false)}
@@ -183,7 +364,7 @@ export default function TranscribeScreen() {
           >
             <Ionicons name="log-out-outline" size={32} color="#250058ff" />
             {showSignOutText && <Text>Sign out</Text>}
-          </Pressable>
+          </Pressable> */}
         </View>
 
         <ScrollView
@@ -210,15 +391,27 @@ export default function TranscribeScreen() {
       </View>
 
       {(selectedFile || recordUri) && (
+        // <View style={[styles.sourceRow, { flexDirection: "column" }]}>
         <View style={styles.sourceRow}>
-          <View style={{ flex: 1 }}>
+          <TouchableOpacity style={[styles.playBtn]} onPress={playAudio}>
+            <Ionicons
+              name={isPlaying ? "pause" : "play"}
+              size={24}
+              color={colors.muted}
+              style={{ marginLeft: !isPlaying ? 2 : 0 }}
+            />
+          </TouchableOpacity>
+          {/* Play / Pause button */}
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
             {/* <Text style={{ fontSize: 14, color: colors.muted }}>Source</Text> */}
             <Text
               style={styles.fileNameText}
               numberOfLines={1}
               ellipsizeMode="middle"
             >
-              {selectedFile ?? recordUri}
+              {selectedFile ?? recordUri?.split("/").pop()}
             </Text>
           </View>
           <View style={styles.sourceActions}>
@@ -228,15 +421,15 @@ export default function TranscribeScreen() {
                 marginRight: 12,
                 backgroundColor: colors.green,
                 borderRadius: 50,
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <Ionicons
                 name="checkmark-sharp"
-                size={24}
+                size={22}
                 color={colors.bgStart}
               />
             </TouchableOpacity>
@@ -246,24 +439,22 @@ export default function TranscribeScreen() {
                 marginRight: 12,
                 backgroundColor: colors.red,
                 borderRadius: 50,
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="close" size={24} color={colors.bgStart} />
+              <Ionicons name="close" size={22} color={colors.bgStart} />
             </TouchableOpacity>
           </View>
         </View>
+        // </View>
       )}
 
       <View style={[styles.footerContainer]}>
         <TouchableOpacity
-          style={[
-            styles.footerBtn,
-            // { backgroundColor: isRecording ? "#ff3333" : colors.secondary },
-          ]}
+          style={styles.footerBtn}
           onPress={onRecordPress}
           accessibilityLabel={
             isRecording ? "Stop recording" : "Start recording"
@@ -375,7 +566,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 18,
     position: "absolute",
-    bottom: 40,
+    bottom: 25,
   },
   sourceRow: {
     flexDirection: "row",
@@ -387,10 +578,20 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     width: width - 40,
   },
-  fileNameText: { fontSize: 16, fontWeight: "600", color: colors.muted1 },
+  fileNameText: { fontSize: 15, fontWeight: "400", color: colors.muted1 },
   sourceActions: {
     // marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
+  },
+  playBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 35,
+    height: 35,
+    borderRadius: 30,
+    backgroundColor: "#fff",
+    borderColor: colors.muted2,
+    borderWidth: 1,
   },
 });

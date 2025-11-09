@@ -6,6 +6,7 @@ export const colors = {
   primary: "#a63affff", // purple
   primary1: "#c8acffff", // light purple
   primary2: "#d9c6ffff", // light purple
+  primary3: "#f7f3ff", // very light purple
   secondary: "#ad49ffff",
   accent: "#FF85D0", // pink
   accent1: "#feb3e1ff", // pink
