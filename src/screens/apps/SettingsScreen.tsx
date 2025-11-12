@@ -101,7 +101,6 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   logoutBtn: {
-    // backgroundColor: '#7C4DFF',
     backgroundColor: colors.primary,
     flexDirection: "row",
     justifyContent: "center",

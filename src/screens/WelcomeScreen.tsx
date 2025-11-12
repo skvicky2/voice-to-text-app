@@ -1,4 +1,3 @@
-// LoginScreen.tsx
 import * as React from "react";
 import {
   View,
@@ -8,7 +7,6 @@ import {
   Alert,
   Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "../theme";
 import WelcomeSVGComponent from "../../assets/svg/WelcomeScreenSvg";
@@ -28,17 +26,11 @@ function WelcomeScreen() {
       );
       return;
     }
-    // Simple fake auth; in real app call API
     navigation.replace("Home");
   };
 
   return (
-    <View
-      // colors={[colors.bgEnd, colors.bgEnd]}
-      // start={{ x: 0, y: 0 }}
-      // end={{ x: 1, y: 2 }} // Horizontal gradient
-      style={[styles.container, styles.gradient]}
-    >
+    <View style={[styles.container, styles.gradient]}>
       <View style={styles.topGap} />
       <WelcomeSVGComponent width={400} height={400} />
       <Text style={styles.title}>Welcome to AudioIntel</Text>
@@ -157,7 +149,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
-    // backgroundColor: "rgba(230, 230, 230, 0.66)",
     borderWidth: 1,
     borderColor: colors.primary,
     overflow: "hidden",
