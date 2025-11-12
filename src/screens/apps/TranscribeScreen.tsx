@@ -7,16 +7,18 @@ import {
   Dimensions,
   Alert,
   ScrollView,
-  Pressable,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Octicons } from "@expo/vector-icons";
 import { colors } from "../../theme";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
+import CryptoJS from "crypto-js";
+import { File } from "expo-file-system";
+import { decode as atob, encode as btoa } from "base-64";
+import * as Crypto from "expo-crypto";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +30,8 @@ const AES_KEY_BYTES = new Uint8Array([
   0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
 ]);
 
+const AES_KEY =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 export default function TranscribeScreen() {
   const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
   const [recording, setRecording] = React.useState<Audio.Recording | null>(
@@ -42,60 +46,12 @@ export default function TranscribeScreen() {
   const [sound, setSound] = React.useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = React.useState<boolean>(false);
   const [audioBlob, setAudioBlob] = React.useState<Blob | null>(null);
-  const [fileBlob, setFileBlob] = React.useState<Blob | null>(null);
+  const [fileBlob, setFileBlob] = React.useState<any | null>(null);
   const [mode, setMode] = useState<"speech" | "file">("speech");
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
   const [hasResponse, setHasResponse] = useState(false);
   const navigation = useNavigation<any>();
-
-  // const onRecordPress = async () => {
-  //   try {
-  //     if (isRecording && recording) {
-  //       await recording.stopAndUnloadAsync();
-  //       const uri = recording.getURI();
-  //       setRecordUri(uri || null);
-  //       setSelectedFile(uri || "Recorded audio");
-  //       setIsRecording(false);
-  //       setRecording(null);
-  //       return;
-  //     }
-
-  //     const { status } = await Audio.requestPermissionsAsync();
-  //     if (status !== "granted") {
-  //       Alert.alert(
-  //         "Permission required",
-  //         "Microphone permission is required to record audio."
-  //       );
-  //       return;
-  //     }
-
-  //     await Audio.setAudioModeAsync({
-  //       allowsRecordingIOS: true,
-  //       playsInSilentModeIOS: true,
-  //     });
-  //     const rec = new Audio.Recording();
-  //     await rec.prepareToRecordAsync(
-  //       (Audio as any).RecordingOptionsPresets?.HIGH_QUALITY ?? {}
-  //     );
-  //     await rec.startAsync();
-  //     setRecording(rec);
-  //     setIsRecording(true);
-  //     setRecordTime(0);
-
-  //     const start = Date.now();
-  //     const timer = setInterval(
-  //       () => setRecordTime(Math.floor((Date.now() - start) / 1000)),
-  //       500
-  //     );
-  //     rec.setOnRecordingStatusUpdate((status: any) => {
-  //       if (!status.isRecording) clearInterval(timer);
-  //     });
-  //   } catch (err) {
-  //     console.warn("record error", err);
-  //     Alert.alert("Recording error", String(err));
-  //   }
-  // };
 
   const onUploadPress = async () => {
     try {
@@ -107,10 +63,10 @@ export default function TranscribeScreen() {
       setRecordUri(res.assets[0].uri || null);
       console.log("File selected:", res);
       // Convert selected file to blob
-      const uri = res.uri;
-      const blob = await getBlobFromUri(uri);
-      setFileBlob(blob);
-      console.log("Blob created from file:", blob);
+      const uri = res.assets[0].uri;
+      // const blob = await getBlobFromUri(uri);
+      setFileBlob(uri);
+      // console.log("Blob created from file:", blob);
       setMode("file");
       // }
     } catch (err) {
@@ -126,65 +82,39 @@ export default function TranscribeScreen() {
       );
       return;
     }
-    const blobToUpload = audioBlob;
-    if (!blobToUpload) {
-      setStatus("No audio selected.");
-      return;
-    }
-
-    setStatus("Encrypting...");
-    setHasResponse(false);
-    setTranscribedText(null);
 
     try {
-      const encryptedBuffer = await encryptAudio(blobToUpload);
-      setStatus("Uploading...");
-      setProgress(0);
+      const blobToUpload = fileBlob;
+      console.log("blobToUpload", blobToUpload);
+      if (!blobToUpload) {
+        setStatus("No audio selected.");
+        return;
+      }
 
+      setStatus("Encrypting...");
+      setHasResponse(false);
+      setTranscribedText(null);
+      const { iv, ciphertext } = await encryptAudioFile(fileBlob, AES_KEY);
+
+      const blob = new Blob([ciphertext], { type: "application/octet-stream" });
       const formData = new FormData();
-      formData.append(
-        "encrypted_file",
-        new Blob([encryptedBuffer]),
-        mode === "speech" ? "recorded_audio.webm" : (fileBlob as File).name
-      );
-      formData.append(
-        "source_type",
-        mode === "speech" ? "web_recorder" : "file_upload"
-      );
-      formData.append(
-        "original_filename",
-        mode === "speech" ? "recorded_audio.webm" : (fileBlob as File).name
-      );
-      formData.append("mode", mode);
-      formData.append("device_name", "web-browser");
 
-      const res = await axios.post(API_BASE_URL, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (e) =>
-          setProgress(Math.round((e.loaded * 100) / (e.total || 1))),
-        timeout: 0,
+      formData.append("encrypted_file", blob, "recorded_audio.webm");
+      formData.append("source_type", "file_upload");
+      formData.append("original_filename", "recorded_audio.webm");
+      formData.append("iv", iv);
+      formData.append("mode", "file");
+      formData.append("device_name", "ios-mobile");
+      console.log("formData", formData);
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        body: formData,
       });
 
-      // setHasResponse(true);
-
-      // Robust parsing for transcription
-      let text = "";
-      if (res.data?.transcription) {
-        if (typeof res.data.transcription === "string")
-          text = res.data.transcription;
-        else if (typeof res.data.transcription.text === "string")
-          text = res.data.transcription.text;
-        else if (Array.isArray(res.data.transcription.segments)) {
-          text = res.data.transcription.segments
-            .map((s: any) => s.text || "")
-            .join("\n");
-        }
-      }
-      console.log("Transcription received:", text);
-
-      setTranscribedText(text?.trim() || "No transcription available.");
-      // setStatus(text ? "✅ Upload successful" : "Upload processed — no transcription found.");
+      console.log("Transcription received:", response);
     } catch (err) {
+      // setTranscribedText(text?.trim() || "No transcription available.");
+      // setStatus(text ? "✅ Upload successful" : "Upload processed — no transcription found.");
       console.error(err);
       // setHasResponse(true);
       setTranscribedText("No transcription available.");
@@ -271,25 +201,33 @@ export default function TranscribeScreen() {
       console.error("Recording error:", err);
     }
   };
-  async function encryptAudio(blob: Blob) {
-    const arrayBuffer = await blob.arrayBuffer();
-    const nonce = crypto.getRandomValues(new Uint8Array(12));
-    const key = await crypto.subtle.importKey(
-      "raw",
-      AES_KEY_BYTES,
-      { name: "AES-GCM" },
-      false,
-      ["encrypt"]
+
+  async function encryptAudioFile(uri: string, AES_KEY: string) {
+    // 1️⃣ Read file contents as Base64
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // 2️⃣ Generate secure IV (16 random bytes)
+    const ivArray = Crypto.getRandomValues(new Uint8Array(16)); // ✅ Works in Expo Go
+    const iv = CryptoJS.lib.WordArray.create(ivArray);
+
+    // 3️⃣ Encrypt file using AES-CBC
+    const encrypted = CryptoJS.AES.encrypt(
+      base64,
+      CryptoJS.enc.Utf8.parse(AES_KEY),
+      {
+        iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7,
+      }
     );
-    const encrypted = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: nonce },
-      key,
-      arrayBuffer
-    );
-    const finalBuffer = new Uint8Array(nonce.length + encrypted.byteLength);
-    finalBuffer.set(nonce, 0);
-    finalBuffer.set(new Uint8Array(encrypted), nonce.length);
-    return finalBuffer;
+
+    // 4️⃣ Return IV + ciphertext (both needed for decryption)
+    return {
+      iv: CryptoJS.enc.Hex.stringify(iv),
+      ciphertext: encrypted.ciphertext.toString(CryptoJS.enc.Base64),
+    };
   }
 
   const playAudio = async () => {
@@ -341,10 +279,7 @@ export default function TranscribeScreen() {
   };
 
   return (
-    <View
-      //   colors={[colors.bgEnd, colors.muted2, colors.bgEnd]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <View style={{ width: width - 40, marginVertical: 16 }}>
         <View
           style={{
@@ -354,17 +289,6 @@ export default function TranscribeScreen() {
           }}
         >
           <Text style={styles.title}>AudioIntel</Text>
-          {/* <Pressable
-            onPress={() => navigation.navigate("Welcome")}
-            onHoverIn={() => setShowSignOutText(true)}
-            onHoverOut={() => setShowSignOutText(false)}
-            onFocus={() => setShowSignOutText(true)}
-            onBlur={() => setShowSignOutText(false)}
-            style={{ flexDirection: "row", alignItems: "center" }}
-          >
-            <Ionicons name="log-out-outline" size={32} color="#250058ff" />
-            {showSignOutText && <Text>Sign out</Text>}
-          </Pressable> */}
         </View>
 
         <ScrollView
@@ -391,7 +315,6 @@ export default function TranscribeScreen() {
       </View>
 
       {(selectedFile || recordUri) && (
-        // <View style={[styles.sourceRow, { flexDirection: "column" }]}>
         <View style={styles.sourceRow}>
           <TouchableOpacity style={[styles.playBtn]} onPress={playAudio}>
             <Ionicons
@@ -449,7 +372,6 @@ export default function TranscribeScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        // </View>
       )}
 
       <View style={[styles.footerContainer]}>
@@ -463,7 +385,6 @@ export default function TranscribeScreen() {
           <Ionicons
             name={isRecording ? "stop" : "mic"}
             size={36}
-            // color="#fff"
             color={isRecording ? "#ff3333" : colors.secondary}
           />
         </TouchableOpacity>
@@ -473,12 +394,6 @@ export default function TranscribeScreen() {
           onPress={onUploadPress}
           accessibilityLabel="Upload file"
         >
-          {/* <MaterialIcons
-            name="file-upload"
-            size={44}
-            //   color={colors.green}
-            color={colors.muted1}
-          /> */}
           <Octicons name="upload" size={32} color="#000000ff" />
         </TouchableOpacity>
       </View>
@@ -573,14 +488,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    // marginBottom: 12,
-    // marginTop: 12,
     marginLeft: 12,
     width: width - 40,
   },
   fileNameText: { fontSize: 15, fontWeight: "400", color: colors.muted1 },
   sourceActions: {
-    // marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
   },

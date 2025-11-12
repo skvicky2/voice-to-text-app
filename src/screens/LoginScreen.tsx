@@ -27,7 +27,6 @@ export default function LoginScreen() {
   const [remember, setRemember] = useState(false);
 
   const onLogin = () => {
-    // Replace with real auth
     console.log("Log in:", { email, password, remember });
     navigation.navigate("Home");
   };

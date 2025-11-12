@@ -43,7 +43,6 @@ export default function SignUpScreen() {
       );
       return;
     }
-    // TODO: Call your API / auth logic here
     Alert.alert("Success", `Account created for ${name}`);
   }
 
@@ -225,19 +224,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
   },
-  // label: {
-  //   fontSize: 14,
-  //   marginBottom: 6,
-  //   color: "#333",
-  // },
-  // input: {
-  //   borderColor: "#ddd",
-  //   borderWidth: 1,
-  //   borderRadius: 8,
-  //   padding: 12,
-  //   fontSize: 16,
-  //   color: "#111",
-  // },
   optionsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
