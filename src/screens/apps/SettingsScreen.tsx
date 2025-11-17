@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Switch } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors } from "../../theme";
 import { useNavigation } from "@react-navigation/native";
+import { LOGOUT_API_URL } from "../../axios/apiUrl";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SettingsScreen() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -10,9 +13,29 @@ export default function SettingsScreen() {
 
   const handleToggleTheme = () => setIsDarkMode(!isDarkMode);
 
-  const handleLogout = () => {
-    console.log("User logged out");
-    navigation.navigate("Welcome");
+  const handleLogout = async () => {
+    const access_token: any = await AsyncStorage.getItem("accessToken");
+    console.log("User logged out", access_token);
+
+    try {
+      const response = await axios.post(
+        process.env.API_BASE_URL + LOGOUT_API_URL,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }
+      );
+
+      console.log("LOGOUT Response received:", response.data);
+
+      await AsyncStorage.removeItem("accessToken");
+
+      navigation.navigate("Welcome");
+    } catch (err: any) {
+      console.log("Error while logging out:", err);
+    }
   };
 
   return (

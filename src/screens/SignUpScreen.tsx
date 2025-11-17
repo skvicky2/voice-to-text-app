@@ -19,31 +19,86 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "../theme";
 import { BlurView } from "expo-blur";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
+import { SIGNUP_API_URL } from "../axios/apiUrl";
+import axios from "axios";
+import { useForm, Controller } from "react-hook-form";
 
 const { width } = Dimensions.get("window");
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  // const [name, setName] = useState("");
+  // const [email, setEmail] = useState("");
+  // const [password, setPassword] = useState("");
+  // const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirm: "",
+    },
+  });
 
-  function onSubmit() {
-    if (!name.trim() || !email.trim() || !password) {
+  const passwordValue = watch("password");
+
+  async function onSubmit(data: any) {
+    if (!data.name.trim() || !data.email.trim() || !data.password) {
       Alert.alert("Missing info", "Please fill out name, email and password.");
       return;
     }
-    if (password !== confirm) {
+    if (data.password !== confirm) {
       Alert.alert(
         "Passwords do not match",
         "Please make sure passwords match."
       );
       return;
     }
-    Alert.alert("Success", `Account created for ${name}`);
+    const signupData = {
+      // fullname: "Noor Mohamed",
+      // email: "noor@example.com",
+      // password: "test@12345",
+      fullname: data.name,
+      email: data.email,
+      password: data.password,
+    };
+
+    const headers = {
+      // "Content-Type": "application/x-www-form-urlencoded",
+    };
+    console.log("Request", JSON.stringify(signupData));
+
+    const response = await axios
+      .post(process.env.API_BASE_URL + SIGNUP_API_URL, signupData, {
+        headers: headers,
+      })
+      .then((res) => {
+        console.log("Success response", res.data);
+        Alert.alert("Success", `Account created for ${res.data.fullname}`);
+        navigation.navigate("Login");
+        // setName("");
+        // setEmail("");
+        // setPassword("");
+        // setConfirm("");
+        setShowPassword(false);
+      })
+      .catch((err) => {
+        console.log("Error occured while signing up", err.message);
+      });
+
+    // const response = await fetch(API_BASE_URL + SIGNUP_API_URL, {
+    //   method: "POST",
+    //   body: JSON.stringify(signupData),
+    //   headers: headers,
+    // });
+    console.log("Response", response, JSON.stringify(signupData));
   }
 
   return (
@@ -66,7 +121,11 @@ export default function SignUpScreen() {
             <View style={styles.headerContainer}>
               <View style={styles.headerRow}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                  <MaterialIcons name="arrow-back-ios" size={22} color="#444444ff" />
+                  <MaterialIcons
+                    name="arrow-back-ios"
+                    size={22}
+                    color="#444444ff"
+                  />
                 </TouchableOpacity>
               </View>
               <WelcomeScreenSvg width={250} height={250} />
@@ -79,45 +138,95 @@ export default function SignUpScreen() {
                 <Text style={styles.cardTitle}>Create Your Account</Text>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Full name</Text>
+                  <Text style={styles.label}>
+                    Full name <Text style={{ color: colors.red }}>{"*"}</Text>
+                  </Text>
                   <View style={styles.inputRow}>
-                    <TextInput
-                      value={name}
-                      onChangeText={setName}
-                      placeholder="Enter full name"
-                      placeholderTextColor="#bfbfbf"
-                      style={styles.input}
-                      autoCapitalize="words"
+                    <Controller
+                      control={control}
+                      name="name"
+                      rules={{
+                        required: "Name is required",
+                        // pattern: {
+                        //   value: /\S+@\S+\.\S+/,
+                        //   message: "Enter a valid email",
+                        // },
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholderTextColor="#bbb"
+                          placeholder="Enter Full Name"
+                          autoCapitalize="none"
+                          style={styles.input}
+                        />
+                      )}
                     />
                   </View>
+                  {errors.name && (
+                    <Text style={{ color: colors.red, marginTop: 4 }}>
+                      {errors.name.message}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
+                  <Text style={styles.label}>
+                    Email <Text style={{ color: colors.red }}>{"*"}</Text>
+                  </Text>
                   <View style={styles.inputRow}>
-                    <TextInput
-                      value={email}
-                      onChangeText={setEmail}
-                      placeholder="you@example.com"
-                      placeholderTextColor="#bfbfbf"
-                      style={styles.input}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
+                    <Controller
+                      control={control}
+                      name="email"
+                      rules={{
+                        required: "Email is required",
+                        pattern: {
+                          value: /\S+@\S+\.\S+/,
+                          message: "Enter a valid email",
+                        },
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholderTextColor="#bbb"
+                          placeholder="Enter email"
+                          autoCapitalize="none"
+                          keyboardType="email-address"
+                          style={styles.input}
+                        />
+                      )}
                     />
                   </View>
+                  {errors.email && (
+                    <Text style={{ color: colors.red, marginTop: 4 }}>
+                      {errors.email.message}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
+                  <Text style={styles.label}>
+                    Password <Text style={{ color: colors.red }}>{"*"}</Text>
+                  </Text>
                   <View style={styles.inputRow}>
-                    <TextInput
-                      value={password}
-                      onChangeText={setPassword}
-                      placeholder="Enter password"
-                      placeholderTextColor="#bfbfbf"
-                      style={styles.input}
-                      secureTextEntry={!showPassword}
+                    <Controller
+                      control={control}
+                      name="password"
+                      rules={{ required: "Password is required" }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholder="Enter password"
+                          secureTextEntry
+                          style={styles.input}
+                          placeholderTextColor="#bbb"
+                        />
+                      )}
                     />
+
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
                       accessibilityRole="button"
@@ -129,25 +238,49 @@ export default function SignUpScreen() {
                       />
                     </TouchableOpacity>
                   </View>
+                  {errors.password && (
+                    <Text style={{ color: colors.red, marginTop: 4 }}>
+                      {errors.password.message}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Confirm Password</Text>
+                  <Text style={styles.label}>
+                    Confirm Password{" "}
+                    <Text style={{ color: colors.red }}>{"*"}</Text>
+                  </Text>
                   <View style={styles.inputRow}>
-                    <TextInput
-                      value={confirm}
-                      onChangeText={setConfirm}
-                      placeholder="Re-enter password"
-                      placeholderTextColor="#bfbfbf"
-                      style={styles.input}
-                      secureTextEntry={!showPassword}
+                    <Controller
+                      control={control}
+                      name="confirm"
+                      rules={{
+                        required: "Confirm Password is required",
+                        validate: (value) =>
+                          value === passwordValue || "Passwords do not match",
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholder="Re-enter password"
+                          secureTextEntry
+                          style={styles.input}
+                          placeholderTextColor="#bbb"
+                        />
+                      )}
                     />
                   </View>
+                  {errors.confirm && (
+                    <Text style={{ color: colors.red, marginTop: 4 }}>
+                      {errors.confirm.message}
+                    </Text>
+                  )}
                 </View>
 
                 <TouchableOpacity
                   style={styles.submitButton}
-                  onPress={onSubmit}
+                  onPress={handleSubmit(onSubmit)}
                   accessibilityRole="button"
                 >
                   <Text style={styles.submitButtonText}>Create Account</Text>
@@ -188,6 +321,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     width: "100%",
     height: "100%",
+    overflow: "scroll",
     alignSelf: "center",
     shadowColor: "#000",
     shadowOpacity: 0.06,
@@ -324,7 +458,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 30,
+    marginTop: 20,
     width: "100%",
   },
   submitButtonText: {
