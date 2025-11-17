@@ -17,18 +17,74 @@ import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { colors } from "../theme";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
+import { LOGIN_API_URL } from "../axios/apiUrl";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useForm, Controller } from "react-hook-form";
 
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      email: "",
+      password: "",
+      remember: "",
+    },
+  });
 
-  const onLogin = () => {
-    console.log("Log in:", { email, password, remember });
-    navigation.navigate("Home");
+  const onLogin = async (data: any) => {
+    console.log("Form Data:", data);
+    const loginData = {
+      // username: "noor@example.com",
+      // password: "test@12345",
+      // device_name: "web",
+      username: data.email,
+      password: data.password,
+      device_name: "ios-mobile",
+    };
+
+    const headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+    const formBody = Object.entries(loginData)
+      .map(
+        ([key, value]) =>
+          encodeURIComponent(key) + "=" + encodeURIComponent(value)
+      )
+      .join("&");
+
+    // const response = await fetch(API_BASE_URL + LOGIN_API_URL, {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/x-www-form-urlencoded",
+    //     // Accept: "application/json",
+    //   },
+    //   body: formBody,
+    // });
+
+    // console.log("response", response);
+    // navigation.navigate("Home");
+
+    const response = await axios
+      .post(process.env.API_BASE_URL + LOGIN_API_URL, formBody, {
+        headers: headers,
+      })
+      .then(async (response) => {
+        console.log("LOGIN Response received:", response.data);
+        AsyncStorage.setItem("accessToken", response.data.access_token);
+        const access_token = await AsyncStorage.getItem("accessToken");
+        console.log("access_token", access_token);
+        navigation.navigate("Home");
+      })
+      .catch((err) => {
+        console.log("Error while logging in", err);
+      });
   };
 
   const onSocial = (provider: string) => {
@@ -55,7 +111,11 @@ export default function LoginScreen() {
             <View style={styles.headerContainer}>
               <View style={styles.headerRow}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                  <MaterialIcons name="arrow-back-ios" size={22} color="#444444ff" />
+                  <MaterialIcons
+                    name="arrow-back-ios"
+                    size={22}
+                    color="#444444ff"
+                  />
                 </TouchableOpacity>
               </View>
               <WelcomeScreenSvg width={250} height={250} />
@@ -65,31 +125,69 @@ export default function LoginScreen() {
                 <Text style={styles.cardTitle}>Welcome Back</Text>
 
                 <View style={styles.inputRow}>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Enter email"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    style={styles.input}
-                    placeholderTextColor="#bbb"
+                  <Text style={styles.label}>
+                    Email <Text style={{ color: colors.red }}>{"*"}</Text>
+                  </Text>
+                  <Controller
+                    control={control}
+                    name="email"
+                    rules={{
+                      required: "Email is required",
+                      pattern: {
+                        value: /\S+@\S+\.\S+/,
+                        message: "Enter a valid email",
+                      },
+                    }}
+                    render={({ field: { onChange, value } }) => (
+                      <TextInput
+                        value={value}
+                        onChangeText={onChange}
+                        placeholderTextColor="#bbb"
+                        placeholder="Enter email"
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        style={styles.input}
+                      />
+                    )}
                   />
+                  {errors.email && (
+                    <Text style={{ color: colors.red, marginTop: 4 }}>
+                      {errors.email.message}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputRow}>
-                  <Text style={styles.label}>Password</Text>
-                  <TextInput
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Enter password"
-                    secureTextEntry
-                    style={styles.input}
-                    placeholderTextColor="#bbb"
+                  <Text style={styles.label}>
+                    Password <Text style={{ color: colors.red }}>{"*"}</Text>
+                  </Text>
+                  <Controller
+                    control={control}
+                    name="password"
+                    rules={{ required: "Password is required" }}
+                    render={({ field: { onChange, value } }) => (
+                      <TextInput
+                        value={value}
+                        onChangeText={onChange}
+                        placeholder="Enter password"
+                        secureTextEntry
+                        style={styles.input}
+                        placeholderTextColor="#bbb"
+                      />
+                    )}
                   />
+
+                  {errors.password && (
+                    <Text style={{ color: colors.red, marginTop: 4 }}>
+                      {errors.password.message}
+                    </Text>
+                  )}
                 </View>
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={onLogin}>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={handleSubmit(onLogin)}
+                >
                   <Text style={styles.primaryBtnText}>Log In</Text>
                 </TouchableOpacity>
               </View>

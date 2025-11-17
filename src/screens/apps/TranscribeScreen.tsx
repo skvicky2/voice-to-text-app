@@ -19,10 +19,9 @@ import CryptoJS from "crypto-js";
 import { File } from "expo-file-system";
 import { decode as atob, encode as btoa } from "base-64";
 import * as Crypto from "expo-crypto";
+import { TRANSCRIBE_API_URL } from "../../axios/apiUrl";
 
 const { width } = Dimensions.get("window");
-
-const API_BASE_URL = "http://35.208.32.13:8000//ingest/encrypted";
 
 const AES_KEY_BYTES = new Uint8Array([
   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89,
@@ -106,12 +105,29 @@ export default function TranscribeScreen() {
       formData.append("mode", "file");
       formData.append("device_name", "ios-mobile");
       console.log("formData", formData);
-      const response = await fetch(API_BASE_URL, {
-        method: "POST",
-        body: formData,
-      });
-
+      const response = await fetch(
+        process.env.API_BASE_URL + TRANSCRIBE_API_URL,
+        {
+          method: "POST",
+          body: formData,
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       console.log("Transcription received:", response);
+
+      // const response = await axios.post(
+      //   API_BASE_URL + TRANSCRIBE_API_URL,
+      //   formData,
+      //   {
+      //     headers: {
+      //       "Content-Type": "multipart/form-data",
+      //     },
+      //     transformRequest: (data) => data, // <— VERY IMPORTANT
+      //   }
+      // );
+      // console.log("Transcription received:", response.data);
+
+      // return response.data;
     } catch (err) {
       // setTranscribedText(text?.trim() || "No transcription available.");
       // setStatus(text ? "✅ Upload successful" : "Upload processed — no transcription found.");
