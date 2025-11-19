@@ -15,16 +15,18 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
-import { colors } from "../theme";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
 import { LOGIN_API_URL } from "../axios/apiUrl";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm, Controller } from "react-hook-form";
+import { useThemeColors } from "../utils/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const navigation = useNavigation<any>();
   const {
     control,
@@ -72,11 +74,14 @@ export default function LoginScreen() {
     // navigation.navigate("Home");
 
     const response = await axios
-      .post(process.env.API_BASE_URL + LOGIN_API_URL, formBody, {
-        headers: headers,
-      })
+      .post(
+        process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGIN_API_URL,
+        formBody,
+        {
+          headers: headers,
+        }
+      )
       .then(async (response) => {
-        console.log("LOGIN Response received:", response.data);
         AsyncStorage.setItem("accessToken", response.data.access_token);
         const access_token = await AsyncStorage.getItem("accessToken");
         console.log("access_token", access_token);
@@ -85,10 +90,6 @@ export default function LoginScreen() {
       .catch((err) => {
         console.log("Error while logging in", err);
       });
-  };
-
-  const onSocial = (provider: string) => {
-    console.log("Social:", provider);
   };
 
   return (
@@ -199,155 +200,150 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerRow: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-  },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 30,
-    padding: 20,
-    marginHorizontal: 20,
-    width: "100%",
-    height: "100%",
-    alignSelf: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+    },
+    flex: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+    },
+    headerContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerRow: {
+      position: "absolute",
+      top: 20,
+      left: 20,
+    },
+    card: {
+      backgroundColor: colors.bgEnd,
+      borderRadius: 30,
+      padding: 20,
+      marginHorizontal: 20,
+      width: "100%",
+      height: "100%",
+      alignSelf: "center",
+      shadowColor: colors.text,
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 3,
+    },
 
-  screenBlur: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    screenBlur: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  screenMirror: {
-    position: "absolute",
-    top: -40,
-    left: -40,
-    width: width + 80,
-    height: 180,
-    transform: [{ rotate: "-10deg" }],
-    opacity: 0.9,
-    pointerEvents: "none",
-  },
-  cardTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 30,
-    textAlign: "center",
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 20,
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  inputRow: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 6,
-    color: "#333",
-  },
-  input: {
-    borderColor: "#ddd",
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: "#111",
-  },
-  optionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  rememberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#aaa",
-    marginRight: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    borderColor: "#0a84ff",
-  },
-  checkboxDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#0a84ff",
-  },
-  rememberText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  forgotText: {
-    fontSize: 14,
-    color: "#0a84ff",
-  },
-  primaryBtn: {
-    backgroundColor: colors.primary,
-    padding: 14,
-    marginTop: 30,
-    borderRadius: 8,
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ddd",
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: "#555",
-  },
-  socialRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  socialBtn: {
-    marginHorizontal: 15,
-  },
-});
+    screenMirror: {
+      position: "absolute",
+      top: -40,
+      left: -40,
+      width: width + 80,
+      height: 180,
+      transform: [{ rotate: "-10deg" }],
+      opacity: 0.9,
+      pointerEvents: "none",
+    },
+    cardTitle: {
+      fontSize: 28,
+      fontWeight: "700",
+      marginBottom: 30,
+      textAlign: "center",
+      color: colors.text,
+    },
+    inputRow: {
+      marginBottom: 15,
+    },
+    label: {
+      fontSize: 14,
+      marginBottom: 6,
+      color: colors.text,
+    },
+    input: {
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: colors.text,
+    },
+    optionsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    rememberRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: "#aaa",
+      marginRight: 8,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkboxChecked: {
+      borderColor: "#0a84ff",
+    },
+    checkboxDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: "#0a84ff",
+    },
+    rememberText: {
+      fontSize: 14,
+      color: "#333",
+    },
+    forgotText: {
+      fontSize: 14,
+      color: "#0a84ff",
+    },
+    primaryBtn: {
+      backgroundColor: colors.primary,
+      padding: 14,
+      marginTop: 30,
+      borderRadius: 8,
+      alignItems: "center",
+      marginVertical: 20,
+    },
+    primaryBtnText: {
+      color: "#fff",
+      fontWeight: "800",
+      fontSize: 16,
+    },
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    divider: {
+      flex: 1,
+      height: 1,
+      backgroundColor: "#ddd",
+    },
+    dividerText: {
+      marginHorizontal: 10,
+      fontSize: 14,
+      color: "#555",
+    },
+    socialRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+    },
+    socialBtn: {
+      marginHorizontal: 15,
+    },
+  });

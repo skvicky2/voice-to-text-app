@@ -20,12 +20,15 @@ import HistoryScreen from "./src/screens/apps/HistoryScreen";
 import SettingsScreen from "./src/screens/apps/SettingsScreen";
 import { Entypo, MaterialIcons } from "@expo/vector-icons";
 import { View, StyleSheet } from "react-native";
+import { ThemeProvider, useThemeColors } from "./src/utils/ThemeContext";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const Tab = createBottomTabNavigator();
 
 function MyTabs() {
+  const colors = useThemeColors();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -38,19 +41,16 @@ function MyTabs() {
         },
         tabBarStyle: {
           height: "10%",
-          borderTopLeftRadius: 18,
-          borderTopRightRadius: 18,
-          backgroundColor: "#faf6ff",
-          // position: "absolute",
-          shadowColor: "#7e22ce",
+          backgroundColor: colors.bgEnd,
+          shadowColor: colors.primary,
           shadowOpacity: 0.1,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: -2 },
           elevation: 8,
           paddingTop: 5,
         },
-        tabBarActiveTintColor: "#7e22ce",
-        tabBarInactiveTintColor: "#aaa",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: keyof typeof MaterialIcons.glyphMap;
 
@@ -62,7 +62,6 @@ function MyTabs() {
             <View
               style={[
                 styles.iconContainer,
-                focused && { backgroundColor: "#ede9fe" },
               ]}
             >
               {route.name === "Home" && (
@@ -87,20 +86,22 @@ function AppNavigator() {
   const [isDarkMode, setIsDarkMode] = React.useState(false);
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <CustomStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <Stack.Navigator
-          initialRouteName="Welcome"
-          screenOptions={{ headerShown: false }}
-        >
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Home" component={MyTabs} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <CustomStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+          <Stack.Navigator
+            initialRouteName="Welcome"
+            screenOptions={{ headerShown: false }}
+          >
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Home" component={MyTabs} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
 }
 

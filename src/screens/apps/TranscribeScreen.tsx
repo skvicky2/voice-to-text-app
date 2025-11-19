@@ -9,7 +9,6 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons, Octicons } from "@expo/vector-icons";
-import { colors } from "../../theme";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
 import { useNavigation } from "@react-navigation/native";
@@ -20,6 +19,8 @@ import { File } from "expo-file-system";
 import { decode as atob, encode as btoa } from "base-64";
 import * as Crypto from "expo-crypto";
 import { TRANSCRIBE_API_URL } from "../../axios/apiUrl";
+import { useThemeColors } from "../../utils/ThemeContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
@@ -51,6 +52,8 @@ export default function TranscribeScreen() {
   const [status, setStatus] = useState("");
   const [hasResponse, setHasResponse] = useState(false);
   const navigation = useNavigation<any>();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
 
   const onUploadPress = async () => {
     try {
@@ -105,12 +108,16 @@ export default function TranscribeScreen() {
       formData.append("mode", "file");
       formData.append("device_name", "ios-mobile");
       console.log("formData", formData);
+      const access_token: any = await AsyncStorage.getItem("accessToken");
       const response = await fetch(
-        process.env.API_BASE_URL + TRANSCRIBE_API_URL,
+        process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + TRANSCRIBE_API_URL,
         {
           method: "POST",
           body: formData,
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${access_token}`,
+          },
         }
       );
       console.log("Transcription received:", response);
@@ -336,7 +343,7 @@ export default function TranscribeScreen() {
             <Ionicons
               name={isPlaying ? "pause" : "play"}
               size={24}
-              color={colors.muted}
+              color={colors.text}
               style={{ marginLeft: !isPlaying ? 2 : 0 }}
             />
           </TouchableOpacity>
@@ -401,7 +408,7 @@ export default function TranscribeScreen() {
           <Ionicons
             name={isRecording ? "stop" : "mic"}
             size={36}
-            color={isRecording ? "#ff3333" : colors.secondary}
+            color={isRecording ? colors.red : colors.primary}
           />
         </TouchableOpacity>
 
@@ -410,116 +417,120 @@ export default function TranscribeScreen() {
           onPress={onUploadPress}
           accessibilityLabel="Upload file"
         >
-          <Octicons name="upload" size={32} color="#000000ff" />
+          <Octicons name="upload" size={32} color={colors.text} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    backgroundColor: colors.bgEnd,
-  },
-  card: {
-    width: width - 40,
-    padding: 20,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,1)",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 20,
-  },
-  title: { fontSize: 32, fontWeight: "700", color: colors.primary },
-  subtitle: {
-    fontSize: 14,
-    color: colors.muted,
-    marginBottom: 16,
-    textAlign: "left",
-  },
-  row: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
-  option: {
-    flex: 1,
-    alignItems: "center",
-    padding: 12,
-    marginHorizontal: 8,
-    borderRadius: 12,
-    backgroundColor: "rgba(0, 0, 0, 0.11)",
-    height: 150,
-  },
-  iconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  optionText: { fontSize: 16, fontWeight: "600" },
-  muted: { fontSize: 12, color: colors.muted, marginTop: 6, flexShrink: 1 },
-  primaryButton: {
-    marginTop: 18,
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    marginHorizontal: 20,
-  },
-  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 18 },
-  transcriptBox: {
-    marginTop: 28,
-    width: "100%",
-    height: "70%",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    boxShadow: "0 6px 6px rgba(0,0,0,0.1)",
-    borderRadius: 10,
-    padding: 20,
-  },
-  transcriptTitle: { fontSize: 18, fontWeight: "700", marginBottom: 18 },
-  transcriptText: { fontSize: 16, fontWeight: "600", color: colors.text },
-  footerBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 50,
-    height: 50,
-    borderRadius: 40,
-    borderColor: colors.muted2,
-    borderWidth: 1,
-  },
-  footerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 40,
-    alignItems: "center",
-    paddingVertical: 18,
-    position: "absolute",
-    bottom: 25,
-  },
-  sourceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginLeft: 12,
-    width: width - 40,
-  },
-  fileNameText: { fontSize: 15, fontWeight: "400", color: colors.muted1 },
-  sourceActions: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  playBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 35,
-    height: 35,
-    borderRadius: 30,
-    backgroundColor: "#fff",
-    borderColor: colors.muted2,
-    borderWidth: 1,
-  },
-});
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "flex-start",
+      alignItems: "center",
+      backgroundColor: colors.bgEnd,
+    },
+    card: {
+      width: width - 40,
+      padding: 20,
+      borderRadius: 14,
+      backgroundColor: "rgba(255,255,255,1)",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 20,
+    },
+    title: { fontSize: 32, fontWeight: "700", color: colors.primary },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted,
+      marginBottom: 16,
+      textAlign: "left",
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      width: "100%",
+    },
+    option: {
+      flex: 1,
+      alignItems: "center",
+      padding: 12,
+      marginHorizontal: 8,
+      borderRadius: 12,
+      backgroundColor: colors.text,
+      height: 150,
+    },
+    iconWrap: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 8,
+    },
+    optionText: { fontSize: 16, fontWeight: "600" },
+    muted: { fontSize: 12, color: colors.muted, marginTop: 6, flexShrink: 1 },
+    primaryButton: {
+      marginTop: 18,
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 18,
+      borderRadius: 10,
+      marginHorizontal: 20,
+    },
+    transcriptBox: {
+      marginTop: 28,
+      width: "100%",
+      height: "70%",
+      backgroundColor: colors.cardBg,
+      boxShadow: "0 6px 6px rgba(0,0,0,0.1)",
+      borderRadius: 10,
+      padding: 20,
+    },
+    transcriptTitle: { fontSize: 18, fontWeight: "700", marginBottom: 18 },
+    transcriptText: { fontSize: 16, fontWeight: "600", color: colors.text },
+    footerBtn: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: 50,
+      height: 50,
+      borderRadius: 40,
+      borderColor: colors.muted2,
+      borderWidth: 1,
+    },
+    footerContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 40,
+      alignItems: "center",
+      paddingVertical: 18,
+      position: "absolute",
+      bottom: 25,
+    },
+    sourceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      marginLeft: 12,
+      width: width - 40,
+    },
+    fileNameText: { fontSize: 15, fontWeight: "400", color: colors.muted1 },
+    sourceActions: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    playBtn: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: 35,
+      height: 35,
+      borderRadius: 30,
+      backgroundColor: colors.cardBg,
+      borderColor: colors.muted2,
+      borderWidth: 1,
+    },
+  });
