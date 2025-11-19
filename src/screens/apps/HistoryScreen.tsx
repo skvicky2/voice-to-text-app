@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus, AVPlaybackStatusSuccess } from "expo-av";
-import { colors } from "../../theme";
+import { useThemeColors } from "../../utils/ThemeContext";
 
 if (
   Platform.OS === "android" &&
@@ -119,6 +119,8 @@ const AudioAccordionScreen = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
 
   const toggleExpand = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -216,67 +218,68 @@ const AudioAccordionScreen = () => {
 
 export default AudioAccordionScreen;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bgEnd,
-    padding: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    marginBottom: 12,
-    color: "#111",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    marginVertical: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  audioName: {
-    marginLeft: 10,
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  date: {
-    fontSize: 14,
-    color: "#888",
-  },
-  cardBody: {
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    paddingTop: 8,
-  },
-  label: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-  },
-  transcribe: {
-    fontSize: 15,
-    color: "#222",
-    fontWeight: "500",
-  },
-});
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bgEnd,
+      padding: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "600",
+      marginBottom: 12,
+      color: colors.text,
+    },
+    card: {
+      backgroundColor: colors.cardBg,
+      borderRadius: 14,
+      marginVertical: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      shadowColor: colors.text,
+      shadowOpacity: 0.08,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    audioName: {
+      marginLeft: 10,
+      fontSize: 16,
+      fontWeight: "500",
+      color: colors.muted,
+    },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    date: {
+      fontSize: 14,
+      color: colors.border,
+    },
+    cardBody: {
+      marginTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: colors.muted2,
+      paddingTop: 8,
+    },
+    label: {
+      fontSize: 14,
+      color: colors.border,
+      marginBottom: 4,
+    },
+    transcribe: {
+      fontSize: 15,
+      color: colors.text,
+      fontWeight: "500",
+    },
+  });

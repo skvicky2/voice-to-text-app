@@ -16,18 +16,19 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { colors } from "../theme";
 import { BlurView } from "expo-blur";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
 import { SIGNUP_API_URL } from "../axios/apiUrl";
 import axios from "axios";
 import { useForm, Controller } from "react-hook-form";
+import { useThemeColors } from "../utils/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
-
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   // const [name, setName] = useState("");
   // const [email, setEmail] = useState("");
   // const [password, setPassword] = useState("");
@@ -50,18 +51,19 @@ export default function SignUpScreen() {
   const passwordValue = watch("password");
 
   async function onSubmit(data: any) {
-    if (!data.name.trim() || !data.email.trim() || !data.password) {
-      Alert.alert("Missing info", "Please fill out name, email and password.");
-      return;
-    }
-    if (data.password !== confirm) {
-      Alert.alert(
-        "Passwords do not match",
-        "Please make sure passwords match."
-      );
-      return;
-    }
-    const signupData = {
+    console.log("data", data);
+    // if (!data.name.trim() || !data.email.trim() || !data.password) {
+    //   Alert.alert("Missing info", "Please fill out name, email and password.");
+    //   return;
+    // }
+    // if (data.password !== confirm) {
+    //   Alert.alert(
+    //     "Passwords do not match",
+    //     "Please make sure passwords match."
+    //   );
+    //   return;
+    // }
+    const signupData: any = {
       // fullname: "Noor Mohamed",
       // email: "noor@example.com",
       // password: "test@12345",
@@ -69,35 +71,43 @@ export default function SignUpScreen() {
       email: data.email,
       password: data.password,
     };
+    console.log("Request Body", signupData);
 
     const headers = {
-      // "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/x-www-form-urlencoded",
     };
     console.log("Request", JSON.stringify(signupData));
 
-    const response = await axios
-      .post(process.env.API_BASE_URL + SIGNUP_API_URL, signupData, {
-        headers: headers,
-      })
-      .then((res) => {
-        console.log("Success response", res.data);
-        Alert.alert("Success", `Account created for ${res.data.fullname}`);
-        navigation.navigate("Login");
-        // setName("");
-        // setEmail("");
-        // setPassword("");
-        // setConfirm("");
-        setShowPassword(false);
-      })
-      .catch((err) => {
-        console.log("Error occured while signing up", err.message);
-      });
+    // const response = await axios
+    //   .post(
+    //     process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
+    //     JSON.stringify(signupData),
+    //     {
+    //       headers: headers,
+    //     }
+    //   )
+    //   .then((res) => {
+    //     console.log("Success response", res.data);
+    //     Alert.alert("Success", `Account created for ${res.data.fullname}`);
+    //     navigation.navigate("Login");
+    //     // setName("");
+    //     // setEmail("");
+    //     // setPassword("");
+    //     // setConfirm("");
+    //     setShowPassword(false);
+    //   })
+    //   .catch((err) => {
+    //     console.log("Error occured while signing up", err.message);
+    //   });
 
-    // const response = await fetch(API_BASE_URL + SIGNUP_API_URL, {
-    //   method: "POST",
-    //   body: JSON.stringify(signupData),
-    //   headers: headers,
-    // });
+    const response = await fetch(
+      process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
+      {
+        method: "POST",
+        body: signupData,
+        headers: headers,
+      }
+    );
     console.log("Response", response, JSON.stringify(signupData));
   }
 
@@ -294,176 +304,171 @@ export default function SignUpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerRow: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-  },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 30,
-    padding: 20,
-    marginHorizontal: 20,
-    width: "100%",
-    height: "100%",
-    overflow: "scroll",
-    alignSelf: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+    },
+    flex: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+    },
+    headerContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerRow: {
+      position: "absolute",
+      top: 20,
+      left: 20,
+    },
+    card: {
+      backgroundColor: colors.bgEnd,
+      borderRadius: 30,
+      padding: 20,
+      marginHorizontal: 20,
+      width: "100%",
+      height: "100%",
+      overflow: "scroll",
+      alignSelf: "center",
+      shadowColor: colors.text,
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 3,
+    },
 
-  screenBlur: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    screenBlur: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  screenMirror: {
-    position: "absolute",
-    top: -40,
-    left: -40,
-    width: width + 80,
-    height: 180,
-    transform: [{ rotate: "-10deg" }],
-    opacity: 0.9,
-    pointerEvents: "none",
-  },
-  cardTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 30,
-    textAlign: "center",
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 20,
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  optionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  rememberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#aaa",
-    marginRight: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    borderColor: "#0a84ff",
-  },
-  checkboxDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#0a84ff",
-  },
-  rememberText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  forgotText: {
-    fontSize: 14,
-    color: "#0a84ff",
-  },
-  primaryBtn: {
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ddd",
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: "#555",
-  },
-  socialRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  socialBtn: {
-    marginHorizontal: 15,
-  },
-  inputGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 6,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderColor: "#ddd",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: "#fff",
-    width: "100%",
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    marginLeft: 8,
-    color: "#333",
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
-    width: "100%",
-  },
-  submitButtonText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-});
+    screenMirror: {
+      position: "absolute",
+      top: -40,
+      left: -40,
+      width: width + 80,
+      height: 180,
+      transform: [{ rotate: "-10deg" }],
+      opacity: 0.9,
+      pointerEvents: "none",
+    },
+    cardTitle: {
+      fontSize: 28,
+      fontWeight: "700",
+      marginBottom: 30,
+      textAlign: "center",
+      color: colors.text,
+    },
+    optionsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    rememberRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: "#aaa",
+      marginRight: 8,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkboxChecked: {
+      borderColor: "#0a84ff",
+    },
+    checkboxDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: "#0a84ff",
+    },
+    rememberText: {
+      fontSize: 14,
+      color: "#333",
+    },
+    forgotText: {
+      fontSize: 14,
+      color: "#0a84ff",
+    },
+    primaryBtn: {
+      backgroundColor: colors.primary,
+      padding: 14,
+      borderRadius: 8,
+      alignItems: "center",
+      marginVertical: 20,
+    },
+    primaryBtnText: {
+      color: "#fff",
+      fontWeight: "600",
+      fontSize: 16,
+    },
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    divider: {
+      flex: 1,
+      height: 1,
+      backgroundColor: "#ddd",
+    },
+    dividerText: {
+      marginHorizontal: 10,
+      fontSize: 14,
+      color: "#555",
+    },
+    socialRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+    },
+    socialBtn: {
+      marginHorizontal: 15,
+    },
+    inputGroup: {
+      marginBottom: 15,
+    },
+    label: {
+      fontSize: 14,
+      color: colors.text,
+      marginBottom: 6,
+    },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      backgroundColor: "#fff",
+      width: "100%",
+    },
+    input: {
+      flex: 1,
+      height: 40,
+      marginLeft: 8,
+      color: "#333",
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      padding: 14,
+      borderRadius: 8,
+      alignItems: "center",
+      marginTop: 20,
+      width: "100%",
+    },
+    submitButtonText: {
+      color: "#fff",
+      fontWeight: "800",
+      fontSize: 16,
+    },
+  });
