@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, Switch } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { LOGOUT_API_URL } from "../../axios/apiUrl";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme, useThemeColors } from "../../utils/ThemeContext";
+import Loader from "../../utils/Loader";
+import axiosInstance from "../../axios/interceptors";
+import { LOGOUT_TEXT } from "../../utils/constants";
 
 export default function SettingsScreen() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -13,16 +15,26 @@ export default function SettingsScreen() {
   const { toggleTheme, theme } = useTheme();
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
 
-  console.log("theme", theme);
   const handleToggleTheme = () => toggleTheme();
+
+  useEffect(() => {
+    const getUserData = async () => {
+      const emailId: any = await AsyncStorage.getItem("emailId");
+      setEmail(emailId);
+      setName("");
+    };
+    getUserData();
+  });
 
   const handleLogout = async () => {
     const access_token: any = await AsyncStorage.getItem("accessToken");
-    console.log("User logged out", access_token);
-
-    try {
-      const response = await axios.post(
+    setLoading(true);
+    const response = await axiosInstance
+      .post(
         process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGOUT_API_URL,
         null,
         {
@@ -30,48 +42,54 @@ export default function SettingsScreen() {
             Authorization: `Bearer ${access_token}`,
           },
         }
-      );
-
-      console.log("LOGOUT Response received:", response.data);
-
-      await AsyncStorage.removeItem("accessToken");
-
-      navigation.navigate("Welcome");
-    } catch (err: any) {
-      console.log("Error while logging out:", err);
-    }
+      )
+      .then(async (response) => {
+        setLoading(false);
+        await AsyncStorage.removeItem("accessToken");
+        navigation.navigate("Welcome");
+      })
+      .catch((err: any) => {
+        setLoading(false);
+        console.log("Error while logging out:", err);
+      });
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgEnd }]}>
-      {/* Header */}
-      <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+    <>
+      <View style={[styles.container, { backgroundColor: colors.bgEnd }]}>
+        {/* Header */}
+        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
 
-      {/* User Info Card */}
-      <View style={styles.card}>
-        <View style={styles.userRow}>
-          <MaterialIcons name="person" size={26} color={colors.primary} />
-          <View>
-            <Text style={styles.userName}>John Doe</Text>
-            <Text style={styles.userEmail}>johndoe@email.com</Text>
+        {/* User Info Card */}
+        <View style={styles.card}>
+          <View style={styles.userRow}>
+            <MaterialIcons name="person" size={26} color={colors.primary} />
+            <View>
+              <Text style={styles.userName}>{name || "User Name"}</Text>
+              <Text style={styles.userEmail}>{email}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Preferences Card */}
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Dark Theme</Text>
-          <Switch value={theme === "dark"} onValueChange={handleToggleTheme} />
+        {/* Preferences Card */}
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Dark Theme</Text>
+            <Switch
+              value={theme === "dark"}
+              onValueChange={handleToggleTheme}
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Logout */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <MaterialIcons name="logout" size={22} color={colors.cardBg} />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-    </View>
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <MaterialIcons name="logout" size={22} color={colors.cardBg} />
+          <Text style={styles.logoutText}>{LOGOUT_TEXT}</Text>
+        </TouchableOpacity>
+      </View>
+      <Loader visible={loading} text="Loading..." />
+    </>
   );
 }
 

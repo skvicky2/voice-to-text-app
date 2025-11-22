@@ -17,10 +17,14 @@ import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
 import { LOGIN_API_URL } from "../axios/apiUrl";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm, Controller } from "react-hook-form";
 import { useThemeColors } from "../utils/ThemeContext";
+import Loader from "../utils/Loader";
+import axiosInstance from "../axios/interceptors";
+import Snackbar from "../utils/Snackbar";
+import { jwtDecode } from "jwt-decode";
+import { LOGIN_WELCOME_TEXT, LOGIN_TEXT } from "../utils/constants";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +32,9 @@ export default function LoginScreen() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const navigation = useNavigation<any>();
+  const [loading, setLoading] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [status, setStatus] = useState("");
   const {
     control,
     handleSubmit,
@@ -41,11 +48,9 @@ export default function LoginScreen() {
   });
 
   const onLogin = async (data: any) => {
-    console.log("Form Data:", data);
+    setLoading(true);
+
     const loginData = {
-      // username: "noor@example.com",
-      // password: "test@12345",
-      // device_name: "web",
       username: data.email,
       password: data.password,
       device_name: "ios-mobile",
@@ -61,19 +66,7 @@ export default function LoginScreen() {
       )
       .join("&");
 
-    // const response = await fetch(API_BASE_URL + LOGIN_API_URL, {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/x-www-form-urlencoded",
-    //     // Accept: "application/json",
-    //   },
-    //   body: formBody,
-    // });
-
-    // console.log("response", response);
-    // navigation.navigate("Home");
-
-    const response = await axios
+    const response = await axiosInstance
       .post(
         process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGIN_API_URL,
         formBody,
@@ -82,121 +75,135 @@ export default function LoginScreen() {
         }
       )
       .then(async (response) => {
+        setLoading(false);
+        setStatus("✅ Logged in successfully");
+        setShowSnackbar(true);
         AsyncStorage.setItem("accessToken", response.data.access_token);
+        const cleaned = response.data.access_token
+          .replace("Bearer ", "")
+          .trim();
+        const decoded: any = jwtDecode(cleaned);
+        AsyncStorage.setItem("emailId", decoded.sub);
         const access_token = await AsyncStorage.getItem("accessToken");
-        console.log("access_token", access_token);
         navigation.navigate("Home");
       })
       .catch((err) => {
+        setLoading(false);
+        setStatus("❌ Error happened while trying to Login");
+        setShowSnackbar(true);
         console.log("Error while logging in", err);
       });
   };
 
   return (
-    <LinearGradient
-      colors={[colors.accent1, colors.primary1, colors.accent1]}
-      style={styles.root}
-    >
+    <>
       <LinearGradient
-        colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.02)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.6 }}
-        style={styles.screenMirror}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: undefined })}
-        style={styles.flex}
+        colors={[colors.accent1, colors.primary1, colors.accent1]}
+        style={styles.root}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
-            <View style={styles.headerContainer}>
-              <View style={styles.headerRow}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                  <MaterialIcons
-                    name="arrow-back-ios"
-                    size={22}
-                    color="#444444ff"
-                  />
-                </TouchableOpacity>
+        <LinearGradient
+          colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.02)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0.6 }}
+          style={styles.screenMirror}
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.select({ ios: "padding", android: undefined })}
+          style={styles.flex}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.container}>
+              <View style={styles.headerContainer}>
+                <View style={styles.headerRow}>
+                  <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <MaterialIcons
+                      name="arrow-back-ios"
+                      size={22}
+                      color="#444444ff"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <WelcomeScreenSvg width={250} height={250} />
               </View>
-              <WelcomeScreenSvg width={250} height={250} />
+              <BlurView intensity={50} tint="light">
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>{LOGIN_WELCOME_TEXT}</Text>
+
+                  <View style={styles.inputRow}>
+                    <Text style={styles.label}>
+                      Email <Text style={{ color: colors.red }}>{"*"}</Text>
+                    </Text>
+                    <Controller
+                      control={control}
+                      name="email"
+                      rules={{
+                        required: "Email is required",
+                        pattern: {
+                          value: /\S+@\S+\.\S+/,
+                          message: "Enter a valid email",
+                        },
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholderTextColor="#bbb"
+                          placeholder="Enter email"
+                          autoCapitalize="none"
+                          keyboardType="email-address"
+                          style={styles.input}
+                        />
+                      )}
+                    />
+                    {errors.email && (
+                      <Text style={{ color: colors.red, marginTop: 4 }}>
+                        {errors.email.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.inputRow}>
+                    <Text style={styles.label}>
+                      Password <Text style={{ color: colors.red }}>{"*"}</Text>
+                    </Text>
+                    <Controller
+                      control={control}
+                      name="password"
+                      rules={{ required: "Password is required" }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholder="Enter password"
+                          secureTextEntry
+                          style={styles.input}
+                          placeholderTextColor="#bbb"
+                        />
+                      )}
+                    />
+
+                    {errors.password && (
+                      <Text style={{ color: colors.red, marginTop: 4 }}>
+                        {errors.password.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.primaryBtn}
+                    onPress={handleSubmit(onLogin)}
+                  >
+                    <Text style={styles.primaryBtnText}>{LOGIN_TEXT}</Text>
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
             </View>
-            <BlurView intensity={50} tint="light">
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Welcome Back</Text>
-
-                <View style={styles.inputRow}>
-                  <Text style={styles.label}>
-                    Email <Text style={{ color: colors.red }}>{"*"}</Text>
-                  </Text>
-                  <Controller
-                    control={control}
-                    name="email"
-                    rules={{
-                      required: "Email is required",
-                      pattern: {
-                        value: /\S+@\S+\.\S+/,
-                        message: "Enter a valid email",
-                      },
-                    }}
-                    render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        value={value}
-                        onChangeText={onChange}
-                        placeholderTextColor="#bbb"
-                        placeholder="Enter email"
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                        style={styles.input}
-                      />
-                    )}
-                  />
-                  {errors.email && (
-                    <Text style={{ color: colors.red, marginTop: 4 }}>
-                      {errors.email.message}
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.inputRow}>
-                  <Text style={styles.label}>
-                    Password <Text style={{ color: colors.red }}>{"*"}</Text>
-                  </Text>
-                  <Controller
-                    control={control}
-                    name="password"
-                    rules={{ required: "Password is required" }}
-                    render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        value={value}
-                        onChangeText={onChange}
-                        placeholder="Enter password"
-                        secureTextEntry
-                        style={styles.input}
-                        placeholderTextColor="#bbb"
-                      />
-                    )}
-                  />
-
-                  {errors.password && (
-                    <Text style={{ color: colors.red, marginTop: 4 }}>
-                      {errors.password.message}
-                    </Text>
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.primaryBtn}
-                  onPress={handleSubmit(onLogin)}
-                >
-                  <Text style={styles.primaryBtnText}>Log In</Text>
-                </TouchableOpacity>
-              </View>
-            </BlurView>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+      <Snackbar visible={showSnackbar} message={status} color={colors} />
+      <Loader visible={loading} text="Loading..." />
+    </>
   );
 }
 

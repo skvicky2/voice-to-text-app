@@ -59,11 +59,7 @@ function MyTabs() {
           else iconName = "settings";
 
           return (
-            <View
-              style={[
-                styles.iconContainer,
-              ]}
-            >
+            <View style={[styles.iconContainer]}>
               {route.name === "Home" && (
                 <Entypo name="chat" size={24} color={color} />
               )}
@@ -76,15 +72,13 @@ function MyTabs() {
       })}
     >
       <Tab.Screen name="Home" component={TranscribeScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
+      {/* <Tab.Screen name="History" component={HistoryScreen} /> */}
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
 function AppNavigator() {
-  const [isDarkMode, setIsDarkMode] = React.useState(false);
-
   return (
     <ThemeProvider>
       <SafeAreaProvider>
