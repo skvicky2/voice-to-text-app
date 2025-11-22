@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,9 +18,15 @@ import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
 import { SIGNUP_API_URL } from "../axios/apiUrl";
-import axios from "axios";
 import { useForm, Controller } from "react-hook-form";
 import { useThemeColors } from "../utils/ThemeContext";
+import Loader from "../utils/Loader";
+import axiosInstance from "../axios/interceptors";
+import Snackbar from "../utils/Snackbar";
+import {
+  CREATE_ACCOUNT_TEXT,
+  CREATE_ACCOUNT_BUTTON_TEXT,
+} from "../utils/constants";
 
 const { width } = Dimensions.get("window");
 
@@ -29,11 +34,10 @@ export default function SignUpScreen() {
   const navigation = useNavigation<any>();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  // const [name, setName] = useState("");
-  // const [email, setEmail] = useState("");
-  // const [password, setPassword] = useState("");
-  // const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [status, setStatus] = useState("");
   const {
     control,
     handleSubmit,
@@ -51,256 +55,234 @@ export default function SignUpScreen() {
   const passwordValue = watch("password");
 
   async function onSubmit(data: any) {
-    console.log("data", data);
-    // if (!data.name.trim() || !data.email.trim() || !data.password) {
-    //   Alert.alert("Missing info", "Please fill out name, email and password.");
-    //   return;
-    // }
-    // if (data.password !== confirm) {
-    //   Alert.alert(
-    //     "Passwords do not match",
-    //     "Please make sure passwords match."
-    //   );
-    //   return;
-    // }
+    setLoading(true);
     const signupData: any = {
-      // fullname: "Noor Mohamed",
-      // email: "noor@example.com",
-      // password: "test@12345",
       fullname: data.name,
       email: data.email,
       password: data.password,
     };
-    console.log("Request Body", signupData);
 
     const headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
     };
-    console.log("Request", JSON.stringify(signupData));
 
-    // const response = await axios
-    //   .post(
-    //     process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
-    //     JSON.stringify(signupData),
-    //     {
-    //       headers: headers,
-    //     }
-    //   )
-    //   .then((res) => {
-    //     console.log("Success response", res.data);
-    //     Alert.alert("Success", `Account created for ${res.data.fullname}`);
-    //     navigation.navigate("Login");
-    //     // setName("");
-    //     // setEmail("");
-    //     // setPassword("");
-    //     // setConfirm("");
-    //     setShowPassword(false);
-    //   })
-    //   .catch((err) => {
-    //     console.log("Error occured while signing up", err.message);
-    //   });
-
-    const response = await fetch(
-      process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
-      {
-        method: "POST",
-        body: signupData,
-        headers: headers,
-      }
-    );
-    console.log("Response", response, JSON.stringify(signupData));
+    const response = await axiosInstance
+      .post(
+        process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
+        JSON.stringify(signupData),
+        {
+          headers: headers,
+        }
+      )
+      .then((res) => {
+        setLoading(false);
+        setStatus("✅ New account created successfully");
+        setShowSnackbar(true);
+        setShowPassword(false);
+        navigation.navigate("Login");
+      })
+      .catch((err) => {
+        setLoading(false);
+        setStatus("❌ Error happened while trying to create new account");
+        setShowSnackbar(true);
+        console.log("Error occured while signing up", err.message);
+      });
   }
 
   return (
-    <LinearGradient
-      colors={[colors.accent1, colors.primary1, colors.accent1]}
-      style={styles.root}
-    >
+    <>
       <LinearGradient
-        colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.02)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.6 }}
-        style={styles.screenMirror}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: undefined })}
-        style={styles.flex}
+        colors={[colors.accent1, colors.primary1, colors.accent1]}
+        style={styles.root}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
-            <View style={styles.headerContainer}>
-              <View style={styles.headerRow}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                  <MaterialIcons
-                    name="arrow-back-ios"
-                    size={22}
-                    color="#444444ff"
-                  />
-                </TouchableOpacity>
+        <LinearGradient
+          colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.02)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0.6 }}
+          style={styles.screenMirror}
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.select({ ios: "padding", android: undefined })}
+          style={styles.flex}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.container}>
+              <View style={styles.headerContainer}>
+                <View style={styles.headerRow}>
+                  <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <MaterialIcons
+                      name="arrow-back-ios"
+                      size={22}
+                      color="#444444ff"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <WelcomeScreenSvg width={250} height={250} />
               </View>
-              <WelcomeScreenSvg width={250} height={250} />
-            </View>
-            <BlurView intensity={50} tint="light">
-              <ScrollView
-                style={styles.card}
-                keyboardShouldPersistTaps="handled"
-              >
-                <Text style={styles.cardTitle}>Create Your Account</Text>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    Full name <Text style={{ color: colors.red }}>{"*"}</Text>
-                  </Text>
-                  <View style={styles.inputRow}>
-                    <Controller
-                      control={control}
-                      name="name"
-                      rules={{
-                        required: "Name is required",
-                        // pattern: {
-                        //   value: /\S+@\S+\.\S+/,
-                        //   message: "Enter a valid email",
-                        // },
-                      }}
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          value={value}
-                          onChangeText={onChange}
-                          placeholderTextColor="#bbb"
-                          placeholder="Enter Full Name"
-                          autoCapitalize="none"
-                          style={styles.input}
-                        />
-                      )}
-                    />
-                  </View>
-                  {errors.name && (
-                    <Text style={{ color: colors.red, marginTop: 4 }}>
-                      {errors.name.message}
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    Email <Text style={{ color: colors.red }}>{"*"}</Text>
-                  </Text>
-                  <View style={styles.inputRow}>
-                    <Controller
-                      control={control}
-                      name="email"
-                      rules={{
-                        required: "Email is required",
-                        pattern: {
-                          value: /\S+@\S+\.\S+/,
-                          message: "Enter a valid email",
-                        },
-                      }}
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          value={value}
-                          onChangeText={onChange}
-                          placeholderTextColor="#bbb"
-                          placeholder="Enter email"
-                          autoCapitalize="none"
-                          keyboardType="email-address"
-                          style={styles.input}
-                        />
-                      )}
-                    />
-                  </View>
-                  {errors.email && (
-                    <Text style={{ color: colors.red, marginTop: 4 }}>
-                      {errors.email.message}
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    Password <Text style={{ color: colors.red }}>{"*"}</Text>
-                  </Text>
-                  <View style={styles.inputRow}>
-                    <Controller
-                      control={control}
-                      name="password"
-                      rules={{ required: "Password is required" }}
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          value={value}
-                          onChangeText={onChange}
-                          placeholder="Enter password"
-                          secureTextEntry
-                          style={styles.input}
-                          placeholderTextColor="#bbb"
-                        />
-                      )}
-                    />
-
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      accessibilityRole="button"
-                    >
-                      <Ionicons
-                        name={showPassword ? "eye-off-outline" : "eye-outline"}
-                        size={18}
-                        color="#a6a6a6"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  {errors.password && (
-                    <Text style={{ color: colors.red, marginTop: 4 }}>
-                      {errors.password.message}
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    Confirm Password{" "}
-                    <Text style={{ color: colors.red }}>{"*"}</Text>
-                  </Text>
-                  <View style={styles.inputRow}>
-                    <Controller
-                      control={control}
-                      name="confirm"
-                      rules={{
-                        required: "Confirm Password is required",
-                        validate: (value) =>
-                          value === passwordValue || "Passwords do not match",
-                      }}
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          value={value}
-                          onChangeText={onChange}
-                          placeholder="Re-enter password"
-                          secureTextEntry
-                          style={styles.input}
-                          placeholderTextColor="#bbb"
-                        />
-                      )}
-                    />
-                  </View>
-                  {errors.confirm && (
-                    <Text style={{ color: colors.red, marginTop: 4 }}>
-                      {errors.confirm.message}
-                    </Text>
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={handleSubmit(onSubmit)}
-                  accessibilityRole="button"
+              <BlurView intensity={50} tint="light">
+                <ScrollView
+                  style={styles.card}
+                  keyboardShouldPersistTaps="handled"
                 >
-                  <Text style={styles.submitButtonText}>Create Account</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </BlurView>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+                  <Text style={styles.cardTitle}>{CREATE_ACCOUNT_TEXT}</Text>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>
+                      Full name <Text style={{ color: colors.red }}>{"*"}</Text>
+                    </Text>
+                    <View style={styles.inputRow}>
+                      <Controller
+                        control={control}
+                        name="name"
+                        rules={{
+                          required: "Name is required",
+                        }}
+                        render={({ field: { onChange, value } }) => (
+                          <TextInput
+                            value={value}
+                            onChangeText={onChange}
+                            placeholderTextColor="#bbb"
+                            placeholder="Enter Full Name"
+                            autoCapitalize="none"
+                            style={styles.input}
+                          />
+                        )}
+                      />
+                    </View>
+                    {errors.name && (
+                      <Text style={{ color: colors.red, marginTop: 4 }}>
+                        {errors.name.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>
+                      Email <Text style={{ color: colors.red }}>{"*"}</Text>
+                    </Text>
+                    <View style={styles.inputRow}>
+                      <Controller
+                        control={control}
+                        name="email"
+                        rules={{
+                          required: "Email is required",
+                          pattern: {
+                            value: /\S+@\S+\.\S+/,
+                            message: "Enter a valid email",
+                          },
+                        }}
+                        render={({ field: { onChange, value } }) => (
+                          <TextInput
+                            value={value}
+                            onChangeText={onChange}
+                            placeholderTextColor="#bbb"
+                            placeholder="Enter email"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            style={styles.input}
+                          />
+                        )}
+                      />
+                    </View>
+                    {errors.email && (
+                      <Text style={{ color: colors.red, marginTop: 4 }}>
+                        {errors.email.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>
+                      Password <Text style={{ color: colors.red }}>{"*"}</Text>
+                    </Text>
+                    <View style={styles.inputRow}>
+                      <Controller
+                        control={control}
+                        name="password"
+                        rules={{ required: "Password is required" }}
+                        render={({ field: { onChange, value } }) => (
+                          <TextInput
+                            value={value}
+                            onChangeText={onChange}
+                            placeholder="Enter password"
+                            secureTextEntry
+                            style={styles.input}
+                            placeholderTextColor="#bbb"
+                          />
+                        )}
+                      />
+
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        accessibilityRole="button"
+                      >
+                        <Ionicons
+                          name={
+                            showPassword ? "eye-off-outline" : "eye-outline"
+                          }
+                          size={18}
+                          color="#a6a6a6"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    {errors.password && (
+                      <Text style={{ color: colors.red, marginTop: 4 }}>
+                        {errors.password.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>
+                      Confirm Password{" "}
+                      <Text style={{ color: colors.red }}>{"*"}</Text>
+                    </Text>
+                    <View style={styles.inputRow}>
+                      <Controller
+                        control={control}
+                        name="confirm"
+                        rules={{
+                          required: "Confirm Password is required",
+                          validate: (value) =>
+                            value === passwordValue || "Passwords do not match",
+                        }}
+                        render={({ field: { onChange, value } }) => (
+                          <TextInput
+                            value={value}
+                            onChangeText={onChange}
+                            placeholder="Re-enter password"
+                            secureTextEntry
+                            style={styles.input}
+                            placeholderTextColor="#bbb"
+                          />
+                        )}
+                      />
+                    </View>
+                    {errors.confirm && (
+                      <Text style={{ color: colors.red, marginTop: 4 }}>
+                        {errors.confirm.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.submitButton}
+                    onPress={handleSubmit(onSubmit)}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.submitButtonText}>
+                      {CREATE_ACCOUNT_BUTTON_TEXT}
+                    </Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </BlurView>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+      <Snackbar visible={showSnackbar} message={status} color={colors} />
+      <Loader visible={loading} text="Loading..." />
+    </>
   );
 }
 
