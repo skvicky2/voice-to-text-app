@@ -26,6 +26,8 @@ import Snackbar from "../utils/Snackbar";
 import {
   CREATE_ACCOUNT_TEXT,
   CREATE_ACCOUNT_BUTTON_TEXT,
+  CREATE_ACCOUNT_SUCCESS_MESSAGE,
+  CREATE_ACCOUNT_ERROR_MESSAGE,
 } from "../utils/constants";
 
 const { width } = Dimensions.get("window");
@@ -35,6 +37,7 @@ export default function SignUpScreen() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [status, setStatus] = useState("");
@@ -43,6 +46,7 @@ export default function SignUpScreen() {
     handleSubmit,
     watch,
     formState: { errors },
+    reset,
   } = useForm({
     defaultValues: {
       name: "",
@@ -66,7 +70,7 @@ export default function SignUpScreen() {
       "Content-Type": "application/json",
     };
 
-    const response = await axiosInstance
+    await axiosInstance
       .post(
         process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
         JSON.stringify(signupData),
@@ -74,18 +78,20 @@ export default function SignUpScreen() {
           headers: headers,
         }
       )
-      .then((res) => {
+      .then(() => {
         setLoading(false);
-        setStatus("✅ New account created successfully");
+        setStatus(CREATE_ACCOUNT_SUCCESS_MESSAGE);
         setShowSnackbar(true);
         setShowPassword(false);
         navigation.navigate("Login");
+        reset();
       })
       .catch((err) => {
         setLoading(false);
-        setStatus("❌ Error happened while trying to create new account");
+        setStatus(CREATE_ACCOUNT_ERROR_MESSAGE);
         setShowSnackbar(true);
         console.log("Error occured while signing up", err.message);
+        reset();
       });
   }
 
@@ -136,6 +142,10 @@ export default function SignUpScreen() {
                         name="name"
                         rules={{
                           required: "Name is required",
+                          minLength: {
+                            value: 3,
+                            message: "Name must be at least 3 characters",
+                          },
                         }}
                         render={({ field: { onChange, value } }) => (
                           <TextInput
@@ -199,31 +209,40 @@ export default function SignUpScreen() {
                       <Controller
                         control={control}
                         name="password"
-                        rules={{ required: "Password is required" }}
+                        rules={{
+                          required: "Password is required",
+                          minLength: {
+                            value: 8,
+                            message: "Password must be at least 8 characters",
+                          },
+                        }}
                         render={({ field: { onChange, value } }) => (
-                          <TextInput
-                            value={value}
-                            onChangeText={onChange}
-                            placeholder="Enter password"
-                            secureTextEntry
-                            style={styles.input}
-                            placeholderTextColor="#bbb"
-                          />
+                          <>
+                            <TextInput
+                              value={value}
+                              onChangeText={onChange}
+                              placeholder="Enter password"
+                              secureTextEntry={!showPassword}
+                              style={styles.input}
+                              placeholderTextColor="#bbb"
+                            />
+                            <TouchableOpacity
+                              onPress={() => setShowPassword(!showPassword)}
+                              accessibilityRole="button"
+                            >
+                              <Ionicons
+                                name={
+                                  !showPassword
+                                    ? "eye-off-outline"
+                                    : "eye-outline"
+                                }
+                                size={18}
+                                color="#a6a6a6"
+                              />
+                            </TouchableOpacity>
+                          </>
                         )}
                       />
-
-                      <TouchableOpacity
-                        onPress={() => setShowPassword(!showPassword)}
-                        accessibilityRole="button"
-                      >
-                        <Ionicons
-                          name={
-                            showPassword ? "eye-off-outline" : "eye-outline"
-                          }
-                          size={18}
-                          color="#a6a6a6"
-                        />
-                      </TouchableOpacity>
                     </View>
                     {errors.password && (
                       <Text style={{ color: colors.red, marginTop: 4 }}>
@@ -247,14 +266,32 @@ export default function SignUpScreen() {
                             value === passwordValue || "Passwords do not match",
                         }}
                         render={({ field: { onChange, value } }) => (
-                          <TextInput
-                            value={value}
-                            onChangeText={onChange}
-                            placeholder="Re-enter password"
-                            secureTextEntry
-                            style={styles.input}
-                            placeholderTextColor="#bbb"
-                          />
+                          <>
+                            <TextInput
+                              value={value}
+                              onChangeText={onChange}
+                              placeholder="Re-enter password"
+                              secureTextEntry={!showConfirmPassword}
+                              style={styles.input}
+                              placeholderTextColor="#bbb"
+                            />
+                            <TouchableOpacity
+                              onPress={() =>
+                                setShowConfirmPassword(!showConfirmPassword)
+                              }
+                              accessibilityRole="button"
+                            >
+                              <Ionicons
+                                name={
+                                  !showConfirmPassword
+                                    ? "eye-off-outline"
+                                    : "eye-outline"
+                                }
+                                size={18}
+                                color="#a6a6a6"
+                              />
+                            </TouchableOpacity>
+                          </>
                         )}
                       />
                     </View>

@@ -9,6 +9,11 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import WelcomeSVGComponent from "../../assets/svg/WelcomeScreenSvg";
 import { useThemeColors } from "../utils/ThemeContext";
+import {
+  APP_NAME,
+  CREATE_ACCOUNT_BUTTON_TEXT,
+  LOGIN_TEXT,
+} from "../utils/constants";
 
 const { width } = Dimensions.get("window");
 
@@ -22,13 +27,15 @@ function WelcomeScreen() {
     <View style={[styles.container, styles.gradient]}>
       <View style={styles.topGap} />
       <WelcomeSVGComponent width={400} height={400} />
-      <Text style={styles.title}>Welcome to AudioIntel</Text>
+      <Text style={styles.title}>Welcome to {APP_NAME}</Text>
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() => navigation.navigate("SignUp")}
         accessibilityRole="button"
       >
-        <Text style={styles.primaryButtonText}>Create Account</Text>
+        <Text style={styles.primaryButtonText}>
+          {CREATE_ACCOUNT_BUTTON_TEXT}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -37,7 +44,7 @@ function WelcomeScreen() {
         accessibilityRole="button"
         activeOpacity={0.8}
       >
-        <Text style={styles.ghostButtonText}>Log In</Text>
+        <Text style={styles.ghostButtonText}>{LOGIN_TEXT}</Text>
       </TouchableOpacity>
     </View>
   );

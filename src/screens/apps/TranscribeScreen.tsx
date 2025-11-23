@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
+  Image,
 } from "react-native";
 import { Ionicons, Octicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
 import { TRANSCRIBE_API_URL } from "../../axios/apiUrl";
 import { useThemeColors } from "../../utils/ThemeContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Loader from "../../utils/Loader";
 import Snackbar from "../../utils/Snackbar";
 import axiosInstance from "../../axios/interceptors";
@@ -26,6 +26,9 @@ import {
   UPLOAD_SUCCESS_NO_TRANSCRIPTION_TEXT,
   UPLOAD_SUCCESS_TEXT,
 } from "../../utils/constants";
+import { Platform } from "react-native";
+
+const deviceType = Platform.OS;
 
 const { width } = Dimensions.get("window");
 
@@ -94,18 +97,12 @@ export default function TranscribeScreen() {
       formData.append("source_type", "mobile_ios");
       formData.append("original_filename", blobToUpload.name);
       formData.append("mode", mode);
-      formData.append("device_name", "iphone");
+      formData.append("device_name", deviceType);
 
-      const access_token: any = await AsyncStorage.getItem("accessToken");
-      const res = axiosInstance
+      axiosInstance
         .post(
           process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + TRANSCRIBE_API_URL,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
-          }
+          formData
         )
         .then(async (response: any) => {
           const json = await response.data;
@@ -113,7 +110,7 @@ export default function TranscribeScreen() {
           setLoading(false);
           setShowSnackbar(true);
           setStatus(
-            json.status
+            json.status === "success"
               ? UPLOAD_SUCCESS_TEXT
               : UPLOAD_SUCCESS_NO_TRANSCRIPTION_TEXT
           );
@@ -249,16 +246,20 @@ export default function TranscribeScreen() {
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-between",
+              justifyContent: "flex-start",
               alignItems: "center",
             }}
           >
+            <Image
+              source={require("../../../assets/favicon.png")}
+              style={{ width: 40, height: 40, marginRight: 8 }}
+            />
             <Text style={styles.title}>{APP_NAME}</Text>
           </View>
 
           <ScrollView
             style={styles.transcriptBox}
-            contentContainerStyle={{ padding: 12 }}
+            contentContainerStyle={{ padding: 10 }}
           >
             {selectedFile || recordUri ? (
               <>
@@ -434,7 +435,7 @@ const createStyles = (colors: any) =>
       marginTop: 28,
       width: "100%",
       height: "70%",
-      backgroundColor: colors.cardBg,
+      backgroundColor: colors.primary3,
       boxShadow: "0 6px 6px rgba(0,0,0,0.1)",
       borderRadius: 10,
       padding: 20,

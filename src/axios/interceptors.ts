@@ -41,6 +41,7 @@ axiosInstance.interceptors.response.use(
       console.log("🔒 Token expired → logging out");
 
       await AsyncStorage.removeItem("accessToken");
+      await AsyncStorage.removeItem("emailId");
       navigationRef.current.navigate("Login");
       return Promise.reject(error);
     }

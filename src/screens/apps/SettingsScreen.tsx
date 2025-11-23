@@ -10,7 +10,6 @@ import axiosInstance from "../../axios/interceptors";
 import { LOGOUT_TEXT } from "../../utils/constants";
 
 export default function SettingsScreen() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const navigation = useNavigation<any>();
   const { toggleTheme, theme } = useTheme();
   const colors = useThemeColors();
@@ -31,19 +30,13 @@ export default function SettingsScreen() {
   });
 
   const handleLogout = async () => {
-    const access_token: any = await AsyncStorage.getItem("accessToken");
     setLoading(true);
-    const response = await axiosInstance
+    await axiosInstance
       .post(
         process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGOUT_API_URL,
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
+        null
       )
-      .then(async (response) => {
+      .then(async () => {
         setLoading(false);
         await AsyncStorage.removeItem("accessToken");
         navigation.navigate("Welcome");
@@ -88,7 +81,7 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>{LOGOUT_TEXT}</Text>
         </TouchableOpacity>
       </View>
-      <Loader visible={loading} text="Loading..." />
+      <Loader visible={loading} text="Logging out..." />
     </>
   );
 }
@@ -105,7 +98,7 @@ const createStyles = (colors: any) =>
       marginBottom: 24,
     },
     card: {
-      backgroundColor: colors.cardBg,
+      backgroundColor: colors.primary3,
       borderRadius: 16,
       padding: 18,
       marginBottom: 16,

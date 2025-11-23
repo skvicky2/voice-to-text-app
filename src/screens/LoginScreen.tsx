@@ -12,7 +12,7 @@ import {
   Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import WelcomeScreenSvg from "../../assets/svg/WelcomeScreenSvg";
@@ -24,7 +24,14 @@ import Loader from "../utils/Loader";
 import axiosInstance from "../axios/interceptors";
 import Snackbar from "../utils/Snackbar";
 import { jwtDecode } from "jwt-decode";
-import { LOGIN_WELCOME_TEXT, LOGIN_TEXT } from "../utils/constants";
+import {
+  LOGIN_WELCOME_TEXT,
+  LOGIN_TEXT,
+  LOGIN_SUCCESS_MESSAGE,
+  LOGIN_ERROR_MESSAGE,
+} from "../utils/constants";
+
+const deviceType = Platform.OS;
 
 const { width } = Dimensions.get("window");
 
@@ -35,6 +42,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [status, setStatus] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const {
     control,
     handleSubmit,
@@ -49,11 +57,10 @@ export default function LoginScreen() {
 
   const onLogin = async (data: any) => {
     setLoading(true);
-
     const loginData = {
       username: data.email,
       password: data.password,
-      device_name: "ios-mobile",
+      device_name: deviceType,
     };
 
     const headers = {
@@ -66,7 +73,7 @@ export default function LoginScreen() {
       )
       .join("&");
 
-    const response = await axiosInstance
+    await axiosInstance
       .post(
         process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGIN_API_URL,
         formBody,
@@ -76,7 +83,7 @@ export default function LoginScreen() {
       )
       .then(async (response) => {
         setLoading(false);
-        setStatus("✅ Logged in successfully");
+        setStatus(LOGIN_SUCCESS_MESSAGE);
         setShowSnackbar(true);
         AsyncStorage.setItem("accessToken", response.data.access_token);
         const cleaned = response.data.access_token
@@ -84,12 +91,11 @@ export default function LoginScreen() {
           .trim();
         const decoded: any = jwtDecode(cleaned);
         AsyncStorage.setItem("emailId", decoded.sub);
-        const access_token = await AsyncStorage.getItem("accessToken");
         navigation.navigate("Home");
       })
       .catch((err) => {
         setLoading(false);
-        setStatus("❌ Error happened while trying to Login");
+        setStatus(LOGIN_ERROR_MESSAGE);
         setShowSnackbar(true);
         console.log("Error while logging in", err);
       });
@@ -166,21 +172,52 @@ export default function LoginScreen() {
                     <Text style={styles.label}>
                       Password <Text style={{ color: colors.red }}>{"*"}</Text>
                     </Text>
-                    <Controller
-                      control={control}
-                      name="password"
-                      rules={{ required: "Password is required" }}
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          value={value}
-                          onChangeText={onChange}
-                          placeholder="Enter password"
-                          secureTextEntry
-                          style={styles.input}
-                          placeholderTextColor="#bbb"
-                        />
-                      )}
-                    />
+                    <View
+                      style={[
+                        styles.input,
+                        {
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                        },
+                      ]}
+                    >
+                      <Controller
+                        control={control}
+                        name="password"
+                        rules={{ required: "Password is required" }}
+                        render={({ field: { onChange, value } }) => (
+                          <>
+                            <TextInput
+                              value={value}
+                              onChangeText={onChange}
+                              placeholder="Enter password"
+                              secureTextEntry={!showPassword}
+                              placeholderTextColor="#bbb"
+                              style={{
+                                color: colors.text,
+                                fontSize: 16,
+                                width: "90%",
+                              }}
+                            />
+                            <TouchableOpacity
+                              onPress={() => setShowPassword(!showPassword)}
+                              accessibilityRole="button"
+                              style={{ alignSelf: "flex-end" }}
+                            >
+                              <Ionicons
+                                name={
+                                  !showPassword
+                                    ? "eye-off-outline"
+                                    : "eye-outline"
+                                }
+                                size={18}
+                                color="#a6a6a6"
+                              />
+                            </TouchableOpacity>
+                          </>
+                        )}
+                      />
+                    </View>
 
                     {errors.password && (
                       <Text style={{ color: colors.red, marginTop: 4 }}>
@@ -202,7 +239,7 @@ export default function LoginScreen() {
         </KeyboardAvoidingView>
       </LinearGradient>
       <Snackbar visible={showSnackbar} message={status} color={colors} />
-      <Loader visible={loading} text="Loading..." />
+      <Loader visible={loading} text="Logging in..." />
     </>
   );
 }

@@ -83,7 +83,10 @@ function AppNavigator() {
     <ThemeProvider>
       <SafeAreaProvider>
         <NavigationContainer>
-          <CustomStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+          <CustomStatusBar
+            barStyle="light-content"
+            backgroundColor="#000000ff"
+          />
           <Stack.Navigator
             initialRouteName="Welcome"
             screenOptions={{ headerShown: false }}
