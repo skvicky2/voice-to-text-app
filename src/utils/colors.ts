@@ -30,7 +30,7 @@ export const lightColors: ColorPalette = {
   primary: "#a63affff", // purple
   primary1: "#c8acffff", // light purple
   primary2: "#d9c6ffff", // light purple
-  primary3: "#f7f3ff", // very light purple
+  primary3: "#ffffffff",
   secondary: "#ad49ffff",
   accent: "#FF85D0", // pink
   accent1: "#feb3e1ff", // pink
@@ -47,13 +47,13 @@ export const lightColors: ColorPalette = {
 export const darkColors: ColorPalette = {
   bgStart: "#1a141d",
   bgMid: "#221a27",
-  bgEnd: "#211922ff",
+  bgEnd: "#1a1025",
   cardBg: "rgba(20,20,20,0.92)",
 
   primary1: "#b68bff",
   primary: "#9f6dff",
   primary2: "#7f4fff",
-  primary3: "#3e3447ff",
+  primary3: "#251c31",
 
   secondary: "#c96dff",
   accent: "#ff77c8",
