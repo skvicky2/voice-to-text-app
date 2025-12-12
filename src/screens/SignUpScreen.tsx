@@ -70,6 +70,19 @@ export default function SignUpScreen() {
       "Content-Type": "application/json",
     };
 
+    // const response = await fetch(
+    //   process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,
+    //   {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify(signupData),
+    //   }
+    // );
+
+    // const data1 = await response.json();
+    // console.log("Response:", data1);
     await axiosInstance
       .post(
         process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + SIGNUP_API_URL,

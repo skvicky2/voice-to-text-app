@@ -23,8 +23,9 @@ export default function SettingsScreen() {
   useEffect(() => {
     const getUserData = async () => {
       const emailId: any = await AsyncStorage.getItem("emailId");
+      const fullName: any = await AsyncStorage.getItem("fullName");
       setEmail(emailId);
-      setName("");
+      setName(fullName);
     };
     getUserData();
   });
@@ -58,7 +59,7 @@ export default function SettingsScreen() {
           <View style={styles.userRow}>
             <MaterialIcons name="person" size={26} color={colors.primary} />
             <View>
-              <Text style={styles.userName}>{name || "User Name"}</Text>
+              <Text style={styles.userName}>{name}</Text>
               <Text style={styles.userEmail}>{email}</Text>
             </View>
           </View>
