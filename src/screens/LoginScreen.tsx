@@ -86,6 +86,7 @@ export default function LoginScreen() {
         setStatus(LOGIN_SUCCESS_MESSAGE);
         setShowSnackbar(true);
         AsyncStorage.setItem("accessToken", response.data.access_token);
+        AsyncStorage.setItem("fullName", response.data.fullname);
         const cleaned = response.data.access_token
           .replace("Bearer ", "")
           .trim();

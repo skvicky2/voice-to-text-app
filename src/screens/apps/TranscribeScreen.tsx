@@ -92,13 +92,15 @@ export default function TranscribeScreen() {
 
       setTranscribedText(null);
       const formData = new FormData();
-
+      let sourceType =
+        deviceType === "ios" || deviceType === "android"
+          ? "mobile_" + deviceType
+          : deviceType;
       formData.append("audio_file", blobToUpload);
-      formData.append("source_type", "mobile_ios");
+      formData.append("source_type", sourceType);
       formData.append("original_filename", blobToUpload.name);
       formData.append("mode", mode);
       formData.append("device_name", deviceType);
-
       axiosInstance
         .post(
           process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + TRANSCRIBE_API_URL,
