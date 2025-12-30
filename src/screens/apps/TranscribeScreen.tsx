@@ -154,13 +154,35 @@ export default function TranscribeScreen() {
     try {
       if (!isRecording) {
         // Start Recording
+        const recordingOptions: any = {
+          // iOS
+          ios: {
+            extension: ".wav",
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+          // Android
+          android: {
+            extension: ".wav",
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 16 * 16000, // approximate; Android may ignore for PCM
+          },
+          // common
+          isMeteringEnabled: true,
+          keepAudioActiveHint: false,
+        };
+
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
         });
 
         const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
+          recordingOptions
         );
         setRecording(recording);
         setIsRecording(true);
@@ -175,8 +197,17 @@ export default function TranscribeScreen() {
         const formatJSON: any = {
           uri,
           name,
-          type: recording._options?.web.mimeType,
+          type:
+            recording._options?.ios.extension === ".wav"
+              ? `audio/${(recording._options?.ios.extension).replace(".", "")}`
+              : "audio/m4a",
         };
+        console.log(
+          "recorded Audio",
+          formatJSON,
+          recording,
+          recording._options?.ios
+        );
         setRecordUri(uri);
         setRecording(null);
         setMode("speech");
