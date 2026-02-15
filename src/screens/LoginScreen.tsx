@@ -55,21 +55,29 @@ export default function LoginScreen() {
     },
   });
 
+  const generateRandom10Digit = (): number => {
+    const min = 1000000000;
+    const max = 9999999999;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+
   const onLogin = async (data: any) => {
     setLoading(true);
+    const device_id = generateRandom10Digit().toString();
     const loginData = {
       username: data.email,
       password: data.password,
-      device_name: deviceType,
+      device_type: deviceType,
+      device_id: device_id,
     };
-
+    AsyncStorage.setItem("deviceId", device_id);
     const headers = {
       "Content-Type": "application/x-www-form-urlencoded",
     };
     const formBody = Object.entries(loginData)
       .map(
         ([key, value]) =>
-          encodeURIComponent(key) + "=" + encodeURIComponent(value)
+          encodeURIComponent(key) + "=" + encodeURIComponent(value),
       )
       .join("&");
 
@@ -79,7 +87,7 @@ export default function LoginScreen() {
         formBody,
         {
           headers: headers,
-        }
+        },
       )
       .then(async (response) => {
         setLoading(false);
@@ -87,10 +95,12 @@ export default function LoginScreen() {
         setShowSnackbar(true);
         AsyncStorage.setItem("accessToken", response.data.access_token);
         AsyncStorage.setItem("fullName", response.data.fullname);
+        AsyncStorage.setItem("accountType", response.data.account_type);
         const cleaned = response.data.access_token
           .replace("Bearer ", "")
           .trim();
         const decoded: any = jwtDecode(cleaned);
+        AsyncStorage.setItem("expiresIn", decoded.exp.toString());
         AsyncStorage.setItem("emailId", decoded.sub);
         navigation.navigate("Home");
       })
@@ -98,7 +108,7 @@ export default function LoginScreen() {
         setLoading(false);
         setStatus(LOGIN_ERROR_MESSAGE);
         setShowSnackbar(true);
-        console.log("Error while logging in", err);
+        console.log("Error while logging in", JSON.stringify(err));
       });
   };
 

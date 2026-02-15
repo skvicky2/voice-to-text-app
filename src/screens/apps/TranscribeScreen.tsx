@@ -7,10 +7,14 @@ import {
   Dimensions,
   ScrollView,
   Image,
+  Modal,
+  Pressable,
+  TextInput,
 } from "react-native";
 import { Ionicons, Octicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system/legacy";
 import { TRANSCRIBE_API_URL } from "../../axios/apiUrl";
 import { useThemeColors } from "../../utils/ThemeContext";
 import Loader from "../../utils/Loader";
@@ -35,12 +39,12 @@ const { width } = Dimensions.get("window");
 export default function TranscribeScreen() {
   const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
   const [recording, setRecording] = React.useState<Audio.Recording | null>(
-    null
+    null,
   );
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordUri, setRecordUri] = React.useState<string | null>(null);
   const [transcribedText, setTranscribedText] = React.useState<string | null>(
-    null
+    null,
   );
   const [sound, setSound] = React.useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = React.useState<boolean>(false);
@@ -75,13 +79,44 @@ export default function TranscribeScreen() {
       console.warn("picker error", err);
     }
   };
+  // Modal & naming state for confirming upload
+  const [confirmModalVisible, setConfirmModalVisible] =
+    useState<boolean>(false);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [uniqueId, setUniqueId] = useState<string>("");
+  const [nameError, setNameError] = useState<string | null>(null);
 
+  // Generate unique ID in format: CASE-{number}-{year}-{randomNumber}
+  const generateUniqueId = (): string => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const date = now.getDate().toString().padStart(2, "0");
+    const sequenceNumber = Math.floor(Math.random() * 10000);
+
+    return `CASE-${year}-${month}-${date}-${sequenceNumber}`;
+  };
+
+  // When user taps the submit button, open modal to ask for a name
+  // Do NOT show or prefill the filename — require the user to enter a name
   const onSubmit = async () => {
     if (!selectedFile && !recordUri) {
       setShowSnackbar(true);
       setStatus(SELECT_ANY_FILE_TEXT);
       return;
     }
+
+    // open modal with empty display name so user types it manually
+    // Generate a new unique ID for this submission
+    const newUniqueId = generateUniqueId();
+    setUniqueId(newUniqueId);
+    setDisplayName("");
+    setConfirmModalVisible(true);
+  };
+
+  // Actual upload logic moved to this function and called after modal confirmation
+  const submitUpload = async (name: string) => {
+    setConfirmModalVisible(false);
     setLoading(true);
     try {
       const blobToUpload = mode === "speech" ? audioBlob : fileBlob;
@@ -96,15 +131,18 @@ export default function TranscribeScreen() {
         deviceType === "ios" || deviceType === "android"
           ? "mobile_" + deviceType
           : deviceType;
+
       formData.append("audio_file", blobToUpload);
       formData.append("source_type", sourceType);
       formData.append("original_filename", blobToUpload.name);
       formData.append("mode", mode);
       formData.append("device_name", deviceType);
+      formData.append("case_id", name);
+
       axiosInstance
         .post(
           process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + TRANSCRIBE_API_URL,
-          formData
+          formData,
         )
         .then(async (response: any) => {
           const json = await response.data;
@@ -114,7 +152,7 @@ export default function TranscribeScreen() {
           setStatus(
             json.status === "success"
               ? UPLOAD_SUCCESS_TEXT
-              : UPLOAD_SUCCESS_NO_TRANSCRIPTION_TEXT
+              : UPLOAD_SUCCESS_NO_TRANSCRIPTION_TEXT,
           );
         })
         .catch((err) => {
@@ -132,6 +170,11 @@ export default function TranscribeScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setNameError("");
+    setDisplayName("");
+  }, [confirmModalVisible]);
 
   // Request permissions on mount
   useEffect(() => {
@@ -153,12 +196,19 @@ export default function TranscribeScreen() {
   const onRecordPress = async () => {
     try {
       if (!isRecording) {
-        // Start Recording
+        // Check permissions first
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== "granted") {
+          setStatus("❌ Microphone permission required");
+          setShowSnackbar(true);
+          return;
+        }
+
         const recordingOptions: any = {
-          // iOS
+          // iOS - Use proper WAV format settings
           ios: {
             extension: ".wav",
-            sampleRate: 16000,
+            sampleRate: 44100, // Use standard sample rate for better compatibility
             numberOfChannels: 1,
             linearPCMBitDepth: 16,
             linearPCMIsBigEndian: false,
@@ -167,9 +217,9 @@ export default function TranscribeScreen() {
           // Android
           android: {
             extension: ".wav",
-            sampleRate: 16000,
+            sampleRate: 44100,
             numberOfChannels: 1,
-            bitRate: 16 * 16000, // approximate; Android may ignore for PCM
+            bitRate: 128000,
           },
           // common
           isMeteringEnabled: true,
@@ -179,11 +229,13 @@ export default function TranscribeScreen() {
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
         });
 
-        const { recording } = await Audio.Recording.createAsync(
-          recordingOptions
-        );
+        const { recording } =
+          await Audio.Recording.createAsync(recordingOptions);
         setRecording(recording);
         setIsRecording(true);
       } else {
@@ -192,34 +244,61 @@ export default function TranscribeScreen() {
         setIsRecording(false);
         await recording.stopAndUnloadAsync();
 
-        const uri = recording.getURI();
-        const name = uri!.split("/").pop();
+        const originalUri = recording.getURI();
+        if (!originalUri) return;
+
+        // Generate new filename: AUD_(date)_(timestamp)
+        const now = new Date();
+        const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
+        const timestamp = now.getTime(); // milliseconds
+        const newFileName = `AUD_${date}_${timestamp}.wav`;
+
+        // Get the directory path and create new URI
+        const dirPath = originalUri.substring(0, originalUri.lastIndexOf("/"));
+        const newUri = `${dirPath}/${newFileName}`;
+        // Rename the file by copying to new location and deleting original
+        let finalUri = originalUri;
+        try {
+          // Use the legacy FileSystem API for binary file support
+          await FileSystem.copyAsync({
+            from: originalUri,
+            to: newUri,
+          });
+          await FileSystem.deleteAsync(originalUri);
+          finalUri = newUri;
+        } catch (err) {
+          console.warn("File rename error:", err);
+          // Use original URI if rename fails
+        }
+
         const formatJSON: any = {
-          uri,
-          name,
-          type:
-            recording._options?.ios.extension === ".wav"
-              ? `audio/${(recording._options?.ios.extension).replace(".", "")}`
-              : "audio/m4a",
+          uri: finalUri,
+          name:
+            finalUri === newUri
+              ? newFileName
+              : originalUri.split("/").pop() || "recording.wav",
+          type: "audio/wav", // Always use WAV format
         };
-        console.log(
-          "recorded Audio",
-          formatJSON,
-          recording,
-          recording._options?.ios
-        );
-        setRecordUri(uri);
+        setRecordUri(newUri);
         setRecording(null);
         setMode("speech");
         setAudioBlob(formatJSON);
 
         // Play the recorded audio
-        const { sound } = await Audio.Sound.createAsync({ uri });
-        setSound(sound);
-        await sound.playAsync();
+        try {
+          const { sound } = await Audio.Sound.createAsync({ uri: finalUri });
+          setSound(sound);
+          await sound.playAsync();
+        } catch (playError) {
+          console.warn("Playback error:", playError);
+        }
       }
     } catch (err) {
       console.error("Recording error:", err);
+      setIsRecording(false);
+      setRecording(null);
+      setStatus("❌ Recording failed. Please try again.");
+      setShowSnackbar(true);
     }
   };
 
@@ -238,7 +317,7 @@ export default function TranscribeScreen() {
 
       const { sound: s } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: true }
+        { shouldPlay: true },
       );
       setSound(s);
       setIsPlaying(true);
@@ -292,7 +371,6 @@ export default function TranscribeScreen() {
 
           <ScrollView
             style={styles.transcriptBox}
-            contentContainerStyle={{ padding: 10 }}
           >
             {selectedFile || recordUri ? (
               <>
@@ -401,6 +479,105 @@ export default function TranscribeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Confirmation modal for upload name */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setConfirmModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View>
+              <View style={styles.inputRow}>
+                <Text style={styles.label}>
+                  Patient ID / Name{" "}
+                  <Text style={{ color: colors.red }}>{"*"}</Text>
+                </Text>
+
+                <TextInput
+                  value={displayName}
+                  onChangeText={(text) => {
+                    setDisplayName(text);
+                    if (text.trim().length > 0) {
+                      setNameError(null); // remove error while typing
+                    }
+                  }}
+                  placeholder="Enter Patient ID / name"
+                  style={[
+                    styles.modalTextInput,
+                    nameError && { borderColor: colors.red },
+                  ]}
+                  placeholderTextColor={colors.muted}
+                />
+                {nameError && <Text style={styles.errorText}>{nameError}</Text>}
+              </View>
+              <View style={styles.inputRow}>
+                <Text style={styles.label}>Audio File</Text>
+                <View style={styles.selectedAudioChip}>
+                  <Text
+                    style={styles.selectedAudioText}
+                    numberOfLines={1}
+                    ellipsizeMode="middle"
+                  >
+                    {selectedFile ?? recordUri?.split("/").pop()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginTop: 5,
+                alignContent: "center",
+              }}
+            >
+              <Pressable
+                onPress={() => setConfirmModalVisible(false)}
+                style={{
+                  marginRight: 15,
+                  justifyContent: "center",
+                  alignContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.red,
+                    fontWeight: "500",
+                    alignContent: "center",
+                  }}
+                >
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!displayName.trim()) {
+                    setNameError("Patient ID / Name is required");
+                    return;
+                  }
+
+                  setNameError(null);
+                  submitUpload(displayName);
+                }}
+                style={{
+                  backgroundColor: colors.green,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: colors.bgStart, fontWeight: "600" }}>
+                  Upload
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Snackbar visible={showSnackbar} message={status} color={colors} />
       <Loader visible={loading} text="Uploading..." />
     </>
@@ -467,11 +644,11 @@ const createStyles = (colors: any) =>
     transcriptBox: {
       marginTop: 28,
       width: "100%",
-      height: "70%",
+      height: "78%",
       backgroundColor: colors.primary3,
       boxShadow: "0 6px 6px rgba(0,0,0,0.1)",
       borderRadius: 10,
-      padding: 20,
+      padding: 15,
     },
     transcriptTitle: { fontSize: 18, fontWeight: "700", marginBottom: 18 },
     transcriptText: { fontSize: 16, fontWeight: "600", color: colors.text },
@@ -489,9 +666,9 @@ const createStyles = (colors: any) =>
       justifyContent: "space-between",
       gap: 40,
       alignItems: "center",
-      paddingVertical: 18,
+      paddingVertical: 10,
       position: "absolute",
-      bottom: 25,
+      bottom: 0,
     },
     sourceRow: {
       flexDirection: "row",
@@ -515,5 +692,78 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.cardBg,
       borderColor: colors.muted2,
       borderWidth: 1,
+    },
+
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    modalContainer: {
+      width: "100%",
+      maxWidth: 480,
+      backgroundColor: colors.cardBg,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.muted2,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    selectedAudioChip: {
+      backgroundColor: colors.muted2,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.muted2,
+      maxWidth: "100%",
+    },
+    selectedAudioText: {
+      color: colors.muted1,
+      fontSize: 14,
+    },
+    uniqueIdChip: {
+      backgroundColor: colors.muted2,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.muted2,
+      maxWidth: "100%",
+    },
+    uniqueIdText: {
+      color: colors.muted1,
+      fontSize: 14,
+      fontFamily: "monospace",
+    },
+    modalTextInput: {
+      borderWidth: 1,
+      borderColor: colors.muted2,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      color: colors.text,
+      backgroundColor: colors.cardBg,
+    },
+    inputRow: {
+      marginBottom: 20,
+      color: colors.primary1,
+    },
+    label: {
+      fontSize: 14,
+      marginBottom: 8,
+      color: colors.text,
+      fontWeight: "600",
+    },
+    errorText: {
+      color: colors.red,
+      fontSize: 12,
+      marginTop: 4,
     },
   });
