@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Switch } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { LOGOUT_API_URL } from "../../axios/apiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -17,6 +17,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [accountType, setAccountType] = useState("");
 
   const handleToggleTheme = () => toggleTheme();
 
@@ -24,19 +25,23 @@ export default function SettingsScreen() {
     const getUserData = async () => {
       const emailId: any = await AsyncStorage.getItem("emailId");
       const fullName: any = await AsyncStorage.getItem("fullName");
+      const accountType: any = await AsyncStorage.getItem("accountType");
       setEmail(emailId);
       setName(fullName);
+      setAccountType(accountType);
     };
     getUserData();
   });
 
   const handleLogout = async () => {
     setLoading(true);
+    const deviceId = await AsyncStorage.getItem("deviceId");
     await axiosInstance
-      .post(
-        process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGOUT_API_URL,
-        null
-      )
+      .post(process.env.EXPO_PUBLIC_MOBILE_APP_API_BASE_URL + LOGOUT_API_URL, {
+        headers: {
+          "device-id": deviceId,
+        },
+      })
       .then(async () => {
         setLoading(false);
         await AsyncStorage.removeItem("accessToken");
@@ -52,35 +57,62 @@ export default function SettingsScreen() {
     <>
       <View style={[styles.container, { backgroundColor: colors.bgEnd }]}>
         {/* Header */}
-        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerRow}>
+            <View
+              style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: colors.primary,
+                },
+              ]}
+            >
+              <Ionicons name="settings" size={24} color={colors.cardBg} />
+            </View>
+            <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+          </View>
+        </View>
 
-        {/* User Info Card */}
-        <View style={styles.card}>
-          <View style={styles.userRow}>
-            <MaterialIcons name="person" size={26} color={colors.primary} />
-            <View>
-              <Text style={styles.userName}>{name}</Text>
-              <Text style={styles.userEmail}>{email}</Text>
+        {/* Content */}
+        <View style={styles.contentContainer}>
+          {/* User Info Card */}
+          <View style={styles.card}>
+            <View style={styles.userRow}>
+              <MaterialIcons name="person" size={28} color={colors.primary} />
+              <View>
+                <Text style={styles.userName}>{name}</Text>
+                <Text style={styles.userEmail}>{email}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Preferences Card */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.label}>Dark Theme</Text>
-            <Switch
-              value={theme === "dark"}
-              onValueChange={handleToggleTheme}
-            />
+          {/* Account Card */}
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <Text style={styles.label}>Account Type</Text>
+              <Text style={[styles.label, { fontWeight: 500 }]}>
+                {accountType}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <MaterialIcons name="logout" size={22} color={colors.cardBg} />
-          <Text style={styles.logoutText}>{LOGOUT_TEXT}</Text>
-        </TouchableOpacity>
+          {/* Preferences Card */}
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <Text style={styles.label}>Dark Theme</Text>
+              <Switch
+                value={theme === "dark"}
+                onValueChange={handleToggleTheme}
+              />
+            </View>
+          </View>
+
+          {/* Logout */}
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <MaterialIcons name="logout" size={22} color={colors.cardBg} />
+            <Text style={styles.logoutText}>{LOGOUT_TEXT}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <Loader visible={loading} text="Logging out..." />
     </>
@@ -91,12 +123,44 @@ const createStyles = (colors: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      padding: 20,
+      backgroundColor: colors.bgEnd,
+    },
+    headerContainer: {
+      backgroundColor: colors.cardBg,
+      paddingHorizontal: 16,
+      paddingVertical: 18,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.muted2,
+      shadowColor: colors.text,
+      shadowOpacity: 0.08,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    backButton: {
+      padding: 8,
+      marginRight: 8,
+    },
+    iconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
     },
     title: {
-      fontSize: 26,
+      fontSize: 24,
       fontWeight: "700",
-      marginBottom: 24,
+      flex: 1,
+    },
+    contentContainer: {
+      flex: 1,
+      padding: 16,
     },
     card: {
       backgroundColor: colors.primary3,
@@ -130,7 +194,7 @@ const createStyles = (colors: any) =>
     },
     label: {
       fontSize: 16,
-      fontWeight: "500",
+      fontWeight: "700",
       color: colors.text,
     },
     logoutBtn: {

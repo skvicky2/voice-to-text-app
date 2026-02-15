@@ -69,6 +69,5 @@ const createStyles = (colors: any) =>
     text: {
       color: colors.bgEnd,
       fontSize: 15,
-      // textAlign: "center",
     },
   });

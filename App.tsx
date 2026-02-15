@@ -1,13 +1,7 @@
 import * as React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
-export type RootStackParamList = {
-  Welcome: undefined; // No params for Welcome screen
-  SignUp: undefined; // No params for SignUp screen
-  Login: undefined; // No params for Home screen
-  Home: { itemId: number; otherParam?: string }; // Params for Details screen
-};
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -21,6 +15,13 @@ import SettingsScreen from "./src/screens/apps/SettingsScreen";
 import { Entypo, MaterialIcons } from "@expo/vector-icons";
 import { View, StyleSheet } from "react-native";
 import { ThemeProvider, useThemeColors } from "./src/utils/ThemeContext";
+
+export type RootStackParamList = {
+  Welcome: undefined; // No params for Welcome screen
+  SignUp: undefined; // No params for SignUp screen
+  Login: undefined; // No params for Home screen
+  Home: { itemId: number; otherParam?: string }; // Params for Details screen
+};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -72,13 +73,55 @@ function MyTabs() {
       })}
     >
       <Tab.Screen name="Home" component={TranscribeScreen} />
-      {/* <Tab.Screen name="History" component={HistoryScreen} /> */}
+      <Tab.Screen name="History" component={HistoryScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
 function AppNavigator() {
+  const [initialRoute, setInitialRoute] =
+    React.useState<keyof RootStackParamList>("Welcome");
+  const [isCheckingToken, setIsCheckingToken] = React.useState(true);
+
+  React.useEffect(() => {
+    const checkTokenValidity = async () => {
+      try {
+        const accessToken = await AsyncStorage.getItem("accessToken");
+        const expiresIn = await AsyncStorage.getItem("expiresIn");
+
+        if (accessToken && expiresIn) {
+          // Check if token is expired
+          const expiryTime = parseInt(expiresIn, 10);
+          const currentTime = Math.floor(Date.now() / 1000);
+
+          if (currentTime < expiryTime) {
+            // Token is still valid
+            setInitialRoute("Home");
+          } else {
+            // Token has expired
+            setInitialRoute("Welcome");
+          }
+        } else {
+          // No token found
+          setInitialRoute("Welcome");
+        }
+      } catch (error) {
+        console.error("Error checking token validity:", error);
+        setInitialRoute("Welcome");
+      } finally {
+        setIsCheckingToken(false);
+      }
+    };
+
+    checkTokenValidity();
+  }, []);
+
+  if (isCheckingToken) {
+    // Optionally return a splash screen or loading screen while checking
+    return null;
+  }
+
   return (
     <ThemeProvider>
       <SafeAreaProvider>
@@ -88,7 +131,7 @@ function AppNavigator() {
             backgroundColor="#000000ff"
           />
           <Stack.Navigator
-            initialRouteName="Welcome"
+            initialRouteName={initialRoute}
             screenOptions={{ headerShown: false }}
           >
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
